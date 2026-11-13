@@ -1,5 +1,6 @@
 ﻿using Jamesnet.Wpf.Controls;
 using System.Windows;
+using ControlUI.Support.UI.Units;
 
 namespace ControlUI
 {
@@ -7,8 +8,7 @@ namespace ControlUI
     {
         protected override Window CreateShell()
         {
-            // Temporary Window instance
-            return new Window();
+            return new DarkWindow();
         }
     }
 }
