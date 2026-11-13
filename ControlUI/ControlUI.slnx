@@ -3,6 +3,9 @@
     <Platform Name="Any CPU" />
     <Platform Name="x64" />
   </Configurations>
+  <Project Path="../ControlUI.Forms/ControlUI.Forms.csproj" Id="27ea00fc-fe48-4b48-a54e-5f5e241d25cd">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
   <Project Path="../ControlUI.Support/ControlUI.Support.csproj" Id="451b3b4e-af11-45c2-bd01-da75e9b3763b">
     <Platform Solution="*|x64" Project="x64" />
   </Project>

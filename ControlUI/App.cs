@@ -1,6 +1,6 @@
 ﻿using Jamesnet.Wpf.Controls;
 using System.Windows;
-using ControlUI.Support.UI.Units;
+using ControlUI.Forms.UI.Views;
 
 namespace ControlUI
 {
@@ -8,7 +8,7 @@ namespace ControlUI
     {
         protected override Window CreateShell()
         {
-            return new DarkWindow();
+            return new ShellWindow();
         }
     }
 }
