@@ -1,5 +1,5 @@
-﻿using Jamesnet.Wpf.Controls;
-using System.Windows;
+﻿using System.Windows;
+using Jamesnet.Wpf.Controls;
 using ControlUI.Forms.UI.Views;
 
 namespace ControlUI

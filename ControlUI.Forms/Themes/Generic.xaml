@@ -2,6 +2,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/ControlUI.Forms;component/Themes/Units/FolderTreeItem.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Forms;component/Themes/Units/FolderTreeView.xaml"/>
         <ResourceDictionary Source="/ControlUI.Forms;component/Themes/Views/ShellWindow.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>

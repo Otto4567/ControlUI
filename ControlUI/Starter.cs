@@ -1,4 +1,5 @@
 ﻿using System;
+using ControlUI.Properties;
 
 namespace ControlUI
 {
@@ -7,7 +8,10 @@ namespace ControlUI
         [STAThread]
         private static void Main(string[] args)
         {
-            _ = new App().Run();
+            _ = new App()
+                .AddInversionModule<HelperModules>()
+                .AddWireDataContext<WireDataContext>()
+                .Run();
         }
     }
 }
