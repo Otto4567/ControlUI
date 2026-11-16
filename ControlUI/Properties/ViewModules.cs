@@ -2,6 +2,7 @@
 using Prism.Ioc;
 using Prism.Modularity;
 using ControlUI.Main.UI.Views;
+using ControlUI.Location.UI.Views;
 
 namespace ControlUI.Properties
 {
@@ -14,6 +15,7 @@ namespace ControlUI.Properties
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
             containerRegistry.RegisterSingleton<IViewable, MainContent>("MainContent");
+            containerRegistry.RegisterSingleton<IViewable, LocationContent>("LocationContent");
         }
     }
 }

@@ -2,8 +2,7 @@
 using Jamesnet.Wpf.Mvvm;
 using Prism.Ioc;
 using Prism.Regions;
-using System.Collections.Generic;
-using ControlUI.Support.Local.Models;
+
 
 namespace ControlUI.Forms.Local.ViewModels
 {
@@ -11,26 +10,25 @@ namespace ControlUI.Forms.Local.ViewModels
     {
         private readonly IContainerProvider _containerProvider;
         private readonly IRegionManager _regionManager;
-        
-        public List<FolderInfo> Roots { get; init; }
-
-        public ShellWindowViewModel(IContainerProvider containerProvider,
-            IRegionManager regionManager)
+        public ShellWindowViewModel(IContainerProvider containerProvider, IRegionManager regionManager)
         {
             _containerProvider = containerProvider;
             _regionManager = regionManager;
         }
-
         public void OnLoaded(IViewable view)
         {
-            IRegion mainRegion = _regionManager.Regions["MainRegion"];
-            IViewable mainContent = _containerProvider.Resolve<IViewable>("MainContent");
-            
-            if (!mainRegion.Views.Contains(mainContent))
+            ImportContent("MainContent", "MainRegion");
+            ImportContent("LocationContent", "LocationRegion");
+        }
+        private void ImportContent(string name, string regionName)
+        {
+            IViewable content = _containerProvider.Resolve<IViewable>(name);
+            IRegion region = _regionManager.Regions[regionName];
+            if (!region.Views.Contains(content))
             {
-                mainRegion.Add(mainContent);
+                region.Add(content);
             }
-            mainRegion.Activate(mainContent);
+            region.Activate(content);
         }
     }
 }

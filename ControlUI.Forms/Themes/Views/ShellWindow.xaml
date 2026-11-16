@@ -7,6 +7,11 @@
     <Style 
         TargetType="{x:Type views:ShellWindow}" 
         BasedOn="{StaticResource {x:Type based:DarkWindow}}">
+        <Setter Property="Location">
+            <Setter.Value>
+                <james:JamesRegion RegionName="LocationRegion"/>
+            </Setter.Value>
+        </Setter>
         <Setter Property="Content">
             <Setter.Value>
                 <james:JamesRegion RegionName="MainRegion"/>

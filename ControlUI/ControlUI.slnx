@@ -6,6 +6,9 @@
   <Project Path="../ControlUI.Forms/ControlUI.Forms.csproj" Id="27ea00fc-fe48-4b48-a54e-5f5e241d25cd">
     <Platform Solution="*|x64" Project="x64" />
   </Project>
+  <Project Path="../ControlUI.Location/ControlUI.Location.csproj" Id="8f2666c3-250f-4590-96d3-6ce175585211">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
   <Project Path="../ControlUI.Main/ControlUI.Main.csproj" Id="73b08435-0a68-4212-b4a4-e41ddcad9983">
     <Platform Solution="*|x64" Project="x64" />
   </Project>
