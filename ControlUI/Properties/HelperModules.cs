@@ -1,5 +1,6 @@
 ﻿using Prism.Ioc;
 using Prism.Modularity;
+using ControlUI.Support.Local.Models;
 using ControlUI.Support.Local.Helpers;
 
 namespace ControlUI.Properties
@@ -12,8 +13,10 @@ namespace ControlUI.Properties
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
+            containerRegistry.RegisterSingleton<ColorManager>();
             containerRegistry.RegisterSingleton<DirectoryManager>();
             containerRegistry.RegisterSingleton<FileService>();
+            containerRegistry.RegisterSingleton<NavigatorService>();
         }
     }
 }

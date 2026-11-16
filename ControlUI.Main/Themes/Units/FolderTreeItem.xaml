@@ -4,7 +4,6 @@
     xmlns:james="clr-namespace:Jamesnet.Wpf.Controls;assembly=Jamesnet.Wpf"
     xmlns:units="clr-namespace:ControlUI.Main.UI.Units"
     xmlns:cnvts="clr-namespace:ControlUI.Support.Local.Converters;assembly=ControlUI.Support">
-    
     <Style TargetType="{x:Type units:FolderTreeItem}">
         <Setter Property="AlternationCount" Value="2"/>
         <Setter Property="Background" Value="Transparent"/>
