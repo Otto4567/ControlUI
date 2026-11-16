@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.Input;
+using Jamesnet.Wpf.Controls;
 using Jamesnet.Wpf.Mvvm;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,7 +8,7 @@ using ControlUI.Support.Local.Models;
 
 namespace ControlUI.Main.Local.ViewModels
 {
-    public partial class MainContentViewModel : ObservableBase
+    public partial class MainContentViewModel : ObservableBase, IViewLoadable
     {
         private readonly FileService _fileService;
         private readonly NavigatorService _navigatorService;
@@ -26,6 +27,12 @@ namespace ControlUI.Main.Local.ViewModels
         private void _navigatorService_LocationChanged(object? sender, LocationChangedEventArgs e)
         {
             _fileService.TryRefreshFiles(Files, out bool isDenied);
+            e.Current.IsDenied = isDenied;
+            if (isDenied) Files.Clear();
+            if (isDenied) Files.Clear();
+            if (isDenied) Files.Clear();
+            if (isDenied) Files.Clear();
+            if (isDenied) Files.Clear();
             _fileService.RefreshLocations(Locations);
         }
         [RelayCommand]
@@ -48,6 +55,13 @@ namespace ControlUI.Main.Local.ViewModels
         private void GoToParent()
         {
             _navigatorService.GoToParent();
+        }
+        public void OnLoaded(IViewable view)
+        {
+            if (Roots.Count == 0) return;
+            FolderInfo initialRoot = Roots[0];
+            initialRoot.IsFolderSelected = true;
+            _navigatorService.ChangeLocation(initialRoot);
         }
     }
 }

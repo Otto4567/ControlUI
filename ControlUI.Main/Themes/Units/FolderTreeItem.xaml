@@ -66,6 +66,14 @@
                             <Setter TargetName="text"
                                     Property="Opacity"
                                     Value="0.3"/>
+                            <Setter Property="ToolTip"
+                                    Value="이 위치에 접근할 수 없습니다."/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Children.Count}"
+                                     Value="0">
+                            <Setter TargetName="expand"
+                                    Property="Visibility"
+                                    Value="Hidden"/>
                         </DataTrigger>
                         <Trigger Property="IsExpanded" Value="True">
                             <Setter TargetName="items"
@@ -92,7 +100,8 @@
                             <MultiDataTrigger.Conditions>
                                 <Condition Binding="{Binding IconType}"
                                            Value="Folder"/>
-                                <Condition Binding="{Binding IsFolderExpanded}" Value="True"/>
+                                <Condition Binding="{Binding IsFolderExpanded}"
+                                           Value="True"/>
                             </MultiDataTrigger.Conditions>
                             <Setter TargetName="icon"
                                     Property="Icon"
