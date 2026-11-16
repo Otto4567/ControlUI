@@ -1,19 +1,36 @@
-﻿using Jamesnet.Wpf.Mvvm;
-using ControlUI.Support.Local.Helpers;
+﻿using Jamesnet.Wpf.Controls;
+using Jamesnet.Wpf.Mvvm;
+using Prism.Ioc;
+using Prism.Regions;
+using System.Collections.Generic;
+using ControlUI.Support.Local.Models;
 
 namespace ControlUI.Forms.Local.ViewModels
 {
-    public class ShellWindowViewModel : ObservableBase
+    public class ShellWindowViewModel : ObservableBase, IViewLoadable
     {
-        public string DownloadDirectory { get; init; }
-        public string DocumentsDirectory { get; init; }
-        public string PicturesDirectory { get; init; }
+        private readonly IContainerProvider _containerProvider;
+        private readonly IRegionManager _regionManager;
+        
+        public List<FolderInfo> Roots { get; init; }
 
-        public ShellWindowViewModel(DirectoryManager directoryManager)
+        public ShellWindowViewModel(IContainerProvider containerProvider,
+            IRegionManager regionManager)
         {
-            DownloadDirectory = directoryManager.DownloadDirectory;
-            DocumentsDirectory = directoryManager.DocumentsDirectory;
-            PicturesDirectory = directoryManager.PicturesDirectory;
+            _containerProvider = containerProvider;
+            _regionManager = regionManager;
+        }
+
+        public void OnLoaded(IViewable view)
+        {
+            IRegion mainRegion = _regionManager.Regions["MainRegion"];
+            IViewable mainContent = _containerProvider.Resolve<IViewable>("MainContent");
+            
+            if (!mainRegion.Views.Contains(mainContent))
+            {
+                mainRegion.Add(mainContent);
+            }
+            mainRegion.Activate(mainContent);
         }
     }
 }

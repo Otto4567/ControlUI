@@ -1,7 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 
-namespace ControlUI.Forms.UI.Units
+namespace ControlUI.Main.UI.Units
 {
     public class FolderTreeItem : TreeViewItem
     {
@@ -10,6 +10,11 @@ namespace ControlUI.Forms.UI.Units
             DefaultStyleKeyProperty.OverrideMetadata(
                 typeof(FolderTreeItem),
                 new FrameworkPropertyMetadata(typeof(FolderTreeItem)));
+        }
+
+        protected override DependencyObject GetContainerForItemOverride()
+        {
+            return new FolderTreeItem();
         }
     }
 }

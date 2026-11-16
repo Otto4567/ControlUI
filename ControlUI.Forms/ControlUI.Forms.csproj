@@ -16,4 +16,9 @@
     <ProjectReference Include="..\ControlUI.Support\ControlUI.Support.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Themes\Units\" />
+    <Folder Include="UI\Units\" />
+  </ItemGroup>
+
 </Project>

@@ -8,12 +8,12 @@ namespace ControlUI.Properties
     {
         public void OnInitialized(IContainerProvider containerProvider)
         {
-
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
             containerRegistry.RegisterSingleton<DirectoryManager>();
+            containerRegistry.RegisterSingleton<FileService>();
         }
     }
 }
