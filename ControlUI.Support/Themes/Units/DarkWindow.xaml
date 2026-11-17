@@ -13,7 +13,7 @@
         <Setter Property="MinHeight" Value="200"/>
         <Setter Property="WindowChrome.WindowChrome">
             <Setter.Value>
-                <WindowChrome CaptionHeight="0" 
+                <WindowChrome CaptionHeight="35" 
                               CornerRadius="0" 
                               GlassFrameThickness="0"
                               NonClientFrameEdges="None" 
@@ -30,13 +30,26 @@
                             UseLayoutRounding="{TemplateBinding UseLayoutRounding}"
                             SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}">
                         <james:JamesGrid Rows="Auto, *"
-                                         Columns="*, Auto, Auto, Auto">
+                                         Columns="*, Auto, Auto, Auto, Auto">
                             <ContentPresenter ContentTemplate="{TemplateBinding LocationTemplate}"
                                               Content="{TemplateBinding Location}"/>
-                            <units:MinimizeButton/>
-                            <units:MaximizeButton/>
-                            <units:CloseButton/>
-                            <ContentPresenter Grid.ColumnSpan="4" 
+                            <units:TopmostButton ToolTip="Always on Top"
+                                                 WindowChrome.IsHitTestVisibleInChrome="True"
+                                                 Command="{Binding ToggleTopmostCommand}"
+                                                 CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <units:MinimizeButton ToolTip="Minimize"
+                                                  WindowChrome.IsHitTestVisibleInChrome="True"
+                                                  Command="{Binding MinimizeCommand}"
+                                                  CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <units:MaximizeButton ToolTip="Maximize"
+                                                  WindowChrome.IsHitTestVisibleInChrome="True"
+                                                  Command="{Binding ToggleMaximizeCommand}"
+                                                  CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <units:CloseButton ToolTip="Close"
+                                               WindowChrome.IsHitTestVisibleInChrome="True"
+                                               Command="{Binding CloseCommand}"
+                                               CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <ContentPresenter Grid.ColumnSpan="5" 
                                               ContentTemplate="{TemplateBinding ContentTemplate}"
                                               ContentSource="Content"/>
                         </james:JamesGrid>

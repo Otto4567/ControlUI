@@ -9,6 +9,9 @@
         <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/FileListBox.xaml"/>
         <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/FolderTreeItem.xaml"/>
         <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/FolderTreeView.xaml"/>
+
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/SideBarItem.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/SideBarView.xaml"/>
         <ResourceDictionary Source="/ControlUI.Main;component/Themes/Views/MainContent.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>

@@ -5,6 +5,7 @@
         <ResourceDictionary Source="/ControlUI.Support;component/Themes/Units/CloseButton.xaml"/>
         <ResourceDictionary Source="/ControlUI.Support;component/Themes/Units/MaximizeButton.xaml"/>
         <ResourceDictionary Source="/ControlUI.Support;component/Themes/Units/MinimizeButton.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Support;component/Themes/Units/TopmostButton.xaml"/>
         <ResourceDictionary Source="/ControlUI.Support;component/Themes/Units/DarkScrollViewer.xaml"/>
         <ResourceDictionary Source="/ControlUI.Support;component/Themes/Units/DarkWindow.xaml"/>
     </ResourceDictionary.MergedDictionaries>

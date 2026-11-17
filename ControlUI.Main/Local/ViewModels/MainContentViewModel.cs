@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using ControlUI.Support.Local.Helpers;
 using ControlUI.Support.Local.Models;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace ControlUI.Main.Local.ViewModels
 {
@@ -15,6 +16,12 @@ namespace ControlUI.Main.Local.ViewModels
         public List<FolderInfo> Roots { get; init; }
         public ObservableCollection<FolderInfo> Files { get; init; }
         public ObservableCollection<LocationInfo> Locations { get; init; }
+
+        public ObservableCollection<SideBarItemInfo> Menus { get; } = SideBarMenus.Create();
+
+        [ObservableProperty]
+        private SideBarItemInfo? _selectedMenu;
+
         public MainContentViewModel(FileService fileService, NavigatorService navigatorService)
         {
             _fileService = fileService;
@@ -23,6 +30,8 @@ namespace ControlUI.Main.Local.ViewModels
             Roots = _fileService.GenerateRootNodes();
             Files = new();
             Locations = new();
+
+            SelectedMenu = Menus.Count > 0 ? Menus[0] : null;
         }
         private void _navigatorService_LocationChanged(object? sender, LocationChangedEventArgs e)
         {
