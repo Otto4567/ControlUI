@@ -17,6 +17,10 @@
     <ProjectReference Include="..\ControlUI.Forms\ControlUI.Forms.csproj" />
     <ProjectReference Include="..\ControlUI.Location\ControlUI.Location.csproj" />
     <ProjectReference Include="..\ControlUI.Main\ControlUI.Main.csproj" />
+    <ProjectReference Include="..\ControlUI.Manual\ControlUI.Manual.csproj" />
+    <ProjectReference Include="..\ControlUI.Operation\ControlUI.Operation.csproj" />
+    <ProjectReference Include="..\ControlUI.Sequence\ControlUI.Sequence.csproj" />
+    <ProjectReference Include="..\ControlUI.Settings\ControlUI.Settings.csproj" />
   </ItemGroup>
 
 </Project>

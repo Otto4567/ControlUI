@@ -18,23 +18,15 @@
                                 <ColumnDefinition Width="64"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-
-                            <!-- 사이드바: 표시 확인용 임시 항목 -->
                             <units:SideBarView
                                 Grid.Column="0"
                                 ItemsSource="{Binding Menus}"
                                 SelectedItem="{Binding SelectedMenu, Mode=TwoWay}"/>
-
-                            <!-- 선택한 기능 화면이 들어갈 자리 -->
-                            <Border
-                                Grid.Column="1"
-                                Background="#161616"
-                                Padding="24">
-
-                                <TextBlock
-                                Text="{Binding SelectedMenu.Title}"
-                                Foreground="#D0D0D0"
-                                FontSize="20"/>
+                            <Border Grid.Column="1"
+                                    Background="#161616">
+                                <ContentControl Content="{Binding CurrentContent}"
+                                                HorizontalContentAlignment="Stretch"
+                                                VerticalContentAlignment="Stretch"/>
                             </Border>
                         </Grid>
                     </Border>

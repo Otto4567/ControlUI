@@ -4,6 +4,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Jamesnet.Wpf.Controls;
 using Jamesnet.Wpf.Mvvm;
+using Prism.Ioc;
 using ControlUI.Support.Local.Helpers;
 using ControlUI.Support.Local.Models;
 
@@ -12,6 +13,7 @@ namespace ControlUI.Main.Local.ViewModels
     public partial class MainContentViewModel : ObservableBase, IViewLoadable
     {
         private readonly NavigationService _navigationService;
+        private readonly IContainerProvider _containerProvider;
 
         public ObservableCollection<SideBarItemInfo> Menus { get; }
             = SideBarMenus.Create();
@@ -19,9 +21,16 @@ namespace ControlUI.Main.Local.ViewModels
         [ObservableProperty]
         private SideBarItemInfo? _selectedMenu;
 
-        public MainContentViewModel(NavigationService navigationService)
+        [ObservableProperty]
+        private object? _currentContent;
+
+        public MainContentViewModel(
+            NavigationService navigationService,
+            IContainerProvider containerProvider)
         {
             _navigationService = navigationService;
+            _containerProvider = containerProvider;
+
             _navigationService.NavigationChanged += OnNavigationChanged;
         }
 
@@ -38,7 +47,6 @@ namespace ControlUI.Main.Local.ViewModels
             UpdateSelectedMenu();
         }
 
-        // 사이드바에서 메뉴를 선택했을 때
         partial void OnSelectedMenuChanged(SideBarItemInfo? value)
         {
             if (value is null)
@@ -47,7 +55,6 @@ namespace ControlUI.Main.Local.ViewModels
             _navigationService.Navigate(value.Key);
         }
 
-        // 뒤로·앞으로 또는 새 메뉴로 이동했을 때
         private void OnNavigationChanged(object? sender, EventArgs e)
         {
             UpdateSelectedMenu();
@@ -57,6 +64,27 @@ namespace ControlUI.Main.Local.ViewModels
         {
             SelectedMenu = Menus.FirstOrDefault(
                 menu => menu.Key == _navigationService.CurrentKey);
+
+            CurrentContent = _navigationService.CurrentKey switch
+            {
+                "operation" =>
+                    _containerProvider.Resolve<IViewable>(
+                        "OperationContentView"),
+
+                "manual" =>
+                    _containerProvider.Resolve<IViewable>(
+                        "ManualContentView"),
+
+                "sequence" =>
+                    _containerProvider.Resolve<IViewable>(
+                        "SequenceContentView"),
+
+                "settings" =>
+                    _containerProvider.Resolve<IViewable>(
+                        "SettingsContentView"),
+
+                _ => null
+            };
         }
     }
 }
