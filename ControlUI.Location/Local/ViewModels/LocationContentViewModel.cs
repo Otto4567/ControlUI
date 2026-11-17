@@ -1,40 +1,46 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System;
 using CommunityToolkit.Mvvm.Input;
 using Jamesnet.Wpf.Mvvm;
 using ControlUI.Support.Local.Helpers;
-using ControlUI.Support.Local.Models;
 
 namespace ControlUI.Location.Local.ViewModels
 {
     public partial class LocationContentViewModel : ObservableBase
     {
-        private readonly NavigatorService _navigatorService;
-        [ObservableProperty]
-        private FileInfoBase _current;
-        public LocationContentViewModel(NavigatorService navigatorService)
+        private readonly NavigationService _navigationService;
+
+        public LocationContentViewModel(NavigationService navigationService)
         {
-            _navigatorService = navigatorService;
-            Current = _navigatorService.Current;
-            _navigatorService.LocationChanged += _navigatorService_LocationChanged;
+            _navigationService = navigationService;
+            _navigationService.NavigationChanged += OnNavigationChanged;
         }
-        private void _navigatorService_LocationChanged(object? sender, LocationChangedEventArgs e)
+
+        private void OnNavigationChanged(object? sender, EventArgs e)
         {
-            Current = e.Current;
+            BackCommand.NotifyCanExecuteChanged();
+            ForwardCommand.NotifyCanExecuteChanged();
         }
-        [RelayCommand]
-        public void Up()
+
+        private bool CanGoBack()
         {
-            _navigatorService.GoToParent();
+            return _navigationService.CanGoBack;
         }
-        [RelayCommand]
-        public void Back()
+
+        private bool CanGoForward()
         {
-            _navigatorService.GoBack();
+            return _navigationService.CanGoForward;
         }
-        [RelayCommand]
-        public void Forward()
+
+        [RelayCommand(CanExecute = nameof(CanGoBack))]
+        private void Back()
         {
-            _navigatorService.GoForward();
+            _navigationService.GoBack();
+        }
+
+        [RelayCommand(CanExecute = nameof(CanGoForward))]
+        private void Forward()
+        {
+            _navigationService.GoForward();
         }
     }
 }

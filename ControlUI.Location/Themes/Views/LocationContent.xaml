@@ -14,23 +14,22 @@
                         BorderThickness="{TemplateBinding BorderThickness}">
                         <james:JamesGrid Rows="Auto" Columns="Auto, *">
                             <Border Background="#444444"
-                                BorderBrush="#222222"
-                                BorderThickness="1" 
-                                CornerRadius="4" 
-                                Margin="6 4 6 4"
-                                HorizontalAlignment="Left">
+                                    BorderBrush="#222222"
+                                    BorderThickness="1" 
+                                    CornerRadius="4" 
+                                    Margin="6 4 6 4"
+                                    HorizontalAlignment="Left"
+                                    WindowChrome.IsHitTestVisibleInChrome="True">
                                 <StackPanel Orientation="Horizontal"
                                             HorizontalAlignment="Left">
-                                    <units:LocatorButton ActionType="Up"
-                                                         Command="{Binding UpCommand}"/>
                                     <units:LocatorButton ActionType="Back"
+                                                         ToolTip="Back"
                                                          Command="{Binding BackCommand}"/>
                                     <units:LocatorButton ActionType="Forward"
+                                                         ToolTip="Forward"
                                                          Command="{Binding ForwardCommand}"/>
                                 </StackPanel>
                             </Border>
-                            <units:LocatorTextBox Text="{Binding Current.FullPath, Mode=OneWay}" 
-                                                  Margin="0 0 6 0"/>
                         </james:JamesGrid>
                     </Border>
                 </ControlTemplate>

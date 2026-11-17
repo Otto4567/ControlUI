@@ -62,14 +62,6 @@
                                     Property="CornerRadius"
                                     Value="0 4 4 0"/>
                         </Trigger>
-                        <Trigger Property="ActionType" Value="Up">
-                            <Setter TargetName="icon"
-                                    Property="Icon"
-                                    Value="ArrowUpBold"/>
-                            <Setter TargetName="border"
-                                    Property="CornerRadius"
-                                    Value="0 0 0 0"/>
-                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

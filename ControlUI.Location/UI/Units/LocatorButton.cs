@@ -10,7 +10,7 @@ namespace ControlUI.Location.UI.Units
             DependencyProperty.Register("ActionType",
                 typeof(ActionType),
                 typeof(LocatorButton),
-                new PropertyMetadata(ActionType.Up));
+                new PropertyMetadata(ActionType.Back));
         public ActionType ActionType
         {
             get { return (ActionType)GetValue(ActionTypeProperty); }

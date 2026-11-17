@@ -15,7 +15,7 @@
 
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="220"/>
+                                <ColumnDefinition Width="64"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
@@ -28,7 +28,7 @@
                             <!-- 선택한 기능 화면이 들어갈 자리 -->
                             <Border
                                 Grid.Column="1"
-                                Background="#252525"
+                                Background="#161616"
                                 Padding="24">
 
                                 <TextBlock

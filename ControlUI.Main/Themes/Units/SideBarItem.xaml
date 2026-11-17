@@ -10,10 +10,16 @@
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Margin" Value="0,3"/>
-        <Setter Property="Padding" Value="14,12"/>
+        <Setter Property="Padding" Value="0"/>
         <Setter Property="MinHeight" Value="46"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
+
+        <Setter Property="ToolTip" Value="{Binding Title}"/>
+        <Setter Property="ToolTipService.Placement" Value="Right"/>
+        <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
+        <Setter Property="AutomationProperties.Name" Value="{Binding Title}"/>
 
         <Setter Property="Template">
             <Setter.Value>
@@ -27,7 +33,7 @@
                         SnapsToDevicePixels="True">
 
                         <Grid>
-                            <!-- 選択中の印 -->
+                            <!-- 선택 표시 -->
                             <Border
                                 x:Name="SelectionMark"
                                 Width="3"
@@ -37,28 +43,15 @@
                                 CornerRadius="1"
                                 Visibility="Collapsed"/>
 
-                            <Grid Margin="{TemplateBinding Padding}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="20"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <james:JamesIcon
-                                    Width="20"
-                                    Height="20"
-                                    VerticalAlignment="Center"
-                                    Icon="{Binding Icon}"
-                                    Fill="{TemplateBinding Foreground}"/>
-
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Margin="12,0,0,0"
-                                    VerticalAlignment="Center"
-                                    Text="{Binding Title}"
-                                    Foreground="{TemplateBinding Foreground}"
-                                    FontSize="14"
-                                    TextTrimming="CharacterEllipsis"/>
-                            </Grid>
+                            <!-- 메뉴 아이콘 -->
+                            <james:JamesIcon
+                                Width="20"
+                                Height="20"
+                                Margin="{TemplateBinding Padding}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Icon="{Binding Icon}"
+                                Fill="{TemplateBinding Foreground}"/>
                         </Grid>
                     </Border>
 
@@ -68,7 +61,6 @@
                             <Setter Property="Foreground" Value="#FFFFFF"/>
                         </Trigger>
 
-                        <!-- 마우스 오버보다 뒤에 두어 선택 색상을 유지 -->
                         <Trigger Property="IsSelected" Value="True">
                             <Setter Property="Background" Value="#253B50"/>
                             <Setter Property="Foreground" Value="#85C5FF"/>

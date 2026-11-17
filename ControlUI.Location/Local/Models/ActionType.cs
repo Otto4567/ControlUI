@@ -2,7 +2,6 @@
 {
     public enum ActionType
     {
-        Up,
         Back,
         Forward
     }

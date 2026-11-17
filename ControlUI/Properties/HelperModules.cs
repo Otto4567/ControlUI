@@ -15,8 +15,7 @@ namespace ControlUI.Properties
         {
             containerRegistry.RegisterSingleton<ColorManager>();
             containerRegistry.RegisterSingleton<DirectoryManager>();
-            containerRegistry.RegisterSingleton<FileService>();
-            containerRegistry.RegisterSingleton<NavigatorService>();
+            containerRegistry.RegisterSingleton<NavigationService>();
         }
     }
 }

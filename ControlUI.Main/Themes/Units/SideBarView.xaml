@@ -8,8 +8,8 @@
         <!-- 목록 전체의 기본 모양 -->
         <Setter Property="Background" Value="#202020"/>
         <Setter Property="Foreground" Value="#D0D0D0"/>
-        <Setter Property="BorderBrush" Value="#333333"/>
-        <Setter Property="BorderThickness" Value="0,0,1,0"/>
+        <Setter Property="BorderBrush" Value="#202020"/>
+        <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="8"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="SelectionMode" Value="Single"/>

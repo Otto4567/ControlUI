@@ -10,7 +10,7 @@ namespace ControlUI.Support.Local.Helpers
         {
             return new()
             {
-                new("operation", "Operation", IconType.ViewGrid),
+                new("operation", "Operation", IconType.Home),
                 new("manual", "Manual", IconType.ViewColumn),
                 new("sequence", "Sequence", IconType.FormatListBulleted),
                 new("settings", "Settings", IconType.Cog)
