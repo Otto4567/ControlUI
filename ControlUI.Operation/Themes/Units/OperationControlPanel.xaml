@@ -1,0 +1,66 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:units="clr-namespace:ControlUI.Operation.UI.Units">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/OperationStyles.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+    <Style x:Key="OperationActionButton" TargetType="Button" BasedOn="{StaticResource OperationButton}">
+        <Setter Property="MinHeight" Value="84" />
+        <Setter Property="Margin" Value="3,0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Padding" Value="4,10" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style TargetType="{x:Type units:OperationControlPanel}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type units:OperationControlPanel}">
+                    <Border Style="{StaticResource OperationCard}" Padding="14">
+                        <ScrollViewer CanContentScroll="False" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                            <Grid MinWidth="280">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Controls" Style="{StaticResource OperationHeading}" />
+                                <UniformGrid Grid.Row="1" Rows="1" Columns="5" VerticalAlignment="Center">
+                                    <Button ToolTip="Home All Axes" AutomationProperties.Name="Home" Style="{StaticResource OperationActionButton}" Background="#E7C64B" Foreground="#25200D" IsEnabled="False">
+                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                            <Path Data="M2,11 L12,2 22,11 H19 V22 H14 V15 H10 V22 H5 V11 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                            <TextBlock Text="Home" HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button ToolTip="Reset Faults" AutomationProperties.Name="Reset" Style="{StaticResource OperationActionButton}" Background="#4B92DE" Foreground="#FFFFFF" IsEnabled="False">
+                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                            <Path Data="M19,8 V3 L17,5 A8,8 0 1 0 20,15 L17,14 A5,5 0 1 1 15,7 L13,9 H19 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                            <TextBlock Text="Reset" HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button ToolTip="Run Sequence" AutomationProperties.Name="Run" Style="{StaticResource OperationActionButton}" Background="#45AD78" Foreground="#10291D" IsEnabled="False">
+                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                            <Path Data="M5,3 L21,12 5,21 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                            <TextBlock Text="Run" HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button ToolTip="Pause Sequence" AutomationProperties.Name="Pause" Style="{StaticResource OperationActionButton}" Background="#E79A42" Foreground="#2B1B08" IsEnabled="False">
+                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                            <Path Data="M5,3 H10 V21 H5 Z M14,3 H19 V21 H14 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                            <TextBlock Text="Pause" HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button ToolTip="Stop Sequence" AutomationProperties.Name="Stop" Style="{StaticResource OperationActionButton}" Background="#D85B60" Foreground="#FFFFFF" IsEnabled="False">
+                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                            <Path Data="M4,4 H20 V20 H4 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                            <TextBlock Text="Stop" HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                                <TextBlock Grid.Row="2" Text="Controls unavailable — UI draft" Style="{StaticResource OperationMuted}" Margin="0,12,0,0" TextWrapping="Wrap" />
+                            </Grid>
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

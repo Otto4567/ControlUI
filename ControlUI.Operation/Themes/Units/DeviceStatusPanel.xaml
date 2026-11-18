@@ -1,0 +1,97 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:units="clr-namespace:ControlUI.Operation.UI.Units">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/OperationStyles.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+    <Style x:Key="AxisValueText" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style x:Key="AxisCenterText" TargetType="TextBlock" BasedOn="{StaticResource AxisValueText}">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style TargetType="{x:Type units:DeviceStatusPanel}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type units:DeviceStatusPanel}">
+                    <Border Style="{StaticResource OperationCard}" Padding="14">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Device Status" Style="{StaticResource OperationHeading}" />
+                            <DataGrid Grid.Row="1" ItemsSource="{Binding Axes}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="False" CanUserSortColumns="False" CanUserResizeRows="False" CanUserResizeColumns="False" HeadersVisibility="Column" RowHeight="30" ColumnHeaderHeight="40" MinColumnWidth="54" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionMode="Single" SelectionUnit="FullRow">
+
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Axis" Width="0.65*" Binding="{Binding Axis}" ElementStyle="{StaticResource AxisCenterText}" />
+                                    <DataGridTemplateColumn Header="Link" Width="0.65*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="—" />
+                                                            <Setter Property="Foreground" Value="#989FA8" />
+                                                            <Setter Property="ToolTip" Value="Connection status unavailable" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                                    <Setter Property="Text" Value="●" />
+                                                                    <Setter Property="Foreground" Value="#65C996" />
+                                                                    <Setter Property="ToolTip" Value="Connected" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsConnected}" Value="False">
+                                                                    <Setter Property="Text" Value="●" />
+                                                                    <Setter Property="Foreground" Value="#DC7777" />
+                                                                    <Setter Property="ToolTip" Value="Disconnected" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Position&#xA;mm" Width="1.4*" Binding="{Binding Position, StringFormat={}{0:F3}, TargetNullValue=—}" ElementStyle="{StaticResource AxisValueText}" />
+                                    <DataGridTextColumn Header="Speed&#xA;mm/s" Width="1.1*" Binding="{Binding Speed, StringFormat={}{0:F2}, TargetNullValue=—}" ElementStyle="{StaticResource AxisValueText}" />
+                                    <DataGridTextColumn Header="Accel&#xA;mm/s²" Width="1.1*" Binding="{Binding Acceleration, StringFormat={}{0:F1}, TargetNullValue=—}" ElementStyle="{StaticResource AxisValueText}" />
+                                    <DataGridTextColumn Header="Decel&#xA;mm/s²" Width="1.1*" Binding="{Binding Deceleration, StringFormat={}{0:F1}, TargetNullValue=—}" ElementStyle="{StaticResource AxisValueText}" />
+                                    <DataGridTemplateColumn Header="Homed" Width="0.9*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="—" />
+                                                            <Setter Property="Foreground" Value="#989FA8" />
+                                                            <Setter Property="ToolTip" Value="Homing status unavailable" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsHomed}" Value="True">
+                                                                    <Setter Property="Text" Value="✓" />
+                                                                    <Setter Property="Foreground" Value="#65C996" />
+                                                                    <Setter Property="ToolTip" Value="Homing completed" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsHomed}" Value="False">
+                                                                    <Setter Property="Text" Value="No" />
+                                                                    <Setter Property="Foreground" Value="#E7BD6D" />
+                                                                    <Setter Property="ToolTip" Value="Not homed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

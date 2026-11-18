@@ -5,6 +5,8 @@ using ControlUI.Location.Local.ViewModels;
 using ControlUI.Location.UI.Views;
 using ControlUI.Main.Local.ViewModels;
 using ControlUI.Main.UI.Views;
+using ControlUI.Operation.UI.Views;
+using ControlUI.Operation.Local.ViewModels;
 
 namespace ControlUI.Properties
 {
@@ -15,6 +17,7 @@ namespace ControlUI.Properties
             items.Register<ShellWindow, ShellWindowViewModel>();
             items.Register<MainContent, MainContentViewModel>();
             items.Register<LocationContent, LocationContentViewModel>();
+            items.Register<OperationContentView, OperationContentViewModel>();
         }
     }
 }

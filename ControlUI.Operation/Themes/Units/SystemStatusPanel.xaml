@@ -1,0 +1,39 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:units="clr-namespace:ControlUI.Operation.UI.Units">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/OperationStyles.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+    <Style TargetType="{x:Type units:SystemStatusPanel}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type units:SystemStatusPanel}">
+                    <Border Style="{StaticResource OperationCard}">
+                        <ScrollViewer CanContentScroll="False" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                            <StackPanel MinWidth="230">
+                                <TextBlock Text="System Status" Style="{StaticResource OperationHeading}" />
+                                <TextBlock Text="OFFLINE" Foreground="#D9B66F" FontSize="22" FontWeight="SemiBold" />
+                                <TextBlock Text="Device services are not connected." Style="{StaticResource OperationMuted}" Margin="0,4,0,12" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="24" />
+                                        <RowDefinition Height="24" />
+                                        <RowDefinition Height="24" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Motion" Style="{StaticResource OperationText}" Grid.Row="0" />
+                                    <TextBlock Text="Disconnected" Style="{StaticResource OperationMuted}" Grid.Row="0" Grid.Column="1" />
+                                    <TextBlock Text="Light" Style="{StaticResource OperationText}" Grid.Row="1" />
+                                    <TextBlock Text="Disconnected" Style="{StaticResource OperationMuted}" Grid.Row="1" Grid.Column="1" />
+                                    <TextBlock Text="Trigger" Style="{StaticResource OperationText}" Grid.Row="2" />
+                                    <TextBlock Text="Disconnected" Style="{StaticResource OperationMuted}" Grid.Row="2" Grid.Column="1" />
+                                </Grid>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>
