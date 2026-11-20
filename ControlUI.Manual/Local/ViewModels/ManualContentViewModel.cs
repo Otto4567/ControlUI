@@ -376,6 +376,7 @@ public partial class ManualContentViewModel : ObservableBase
         {
             await CaptureMove(axis)(axis.TargetPositionMm, axis.MoveModeIndex == 1);
         }
+        catch (OperationCanceledException) { axis.JogHeld = false; }
         catch (Exception ex) { await RecordAxisErrorAsync(ex); }
     }
 
@@ -431,6 +432,7 @@ public partial class ManualContentViewModel : ObservableBase
                 await RecordAxisErrorAsync(new InvalidOperationException(blocked));
             }
         }
+        catch (OperationCanceledException) { axis.JogHeld = false; }
         catch (Exception ex)
         {
             axis.JogHeld = false;
@@ -499,7 +501,7 @@ public partial class ManualContentViewModel : ObservableBase
                 await MoveAndWaitAsync(start);
             }
         }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (OperationCanceledException) { /* Repeat token or pending dispatch canceled by Stop. */ }
         catch (Exception ex)
         {
             if (!_motionService.IsOperationActive)
