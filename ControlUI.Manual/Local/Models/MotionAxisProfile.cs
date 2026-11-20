@@ -26,6 +26,7 @@ public partial class MotionAxisProfile(
     public AxisSignalValue NegativeLimit { get; } = new();
     public AxisSignalValue Emergency { get; } = new();
     public double MillimetersPerNativeUnit { get; internal set; }
+    internal long JogRequest { get; set; }
     public bool JogHeld { get; set; }
     public System.Threading.CancellationTokenSource? Repeat { get; set; }
 

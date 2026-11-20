@@ -357,7 +357,7 @@ public partial class ManualContentViewModel : ObservableBase
         {
             await CaptureMove(axis)(axis.TargetPositionMm, axis.MoveModeIndex == 1);
         }
-        catch (OperationCanceledException) { axis.JogHeld = false; }
+        catch (OperationCanceledException) { /* Stop canceled the queued move. */ }
         catch (Exception ex) { await RecordAxisErrorAsync(ex); }
     }
 
@@ -389,6 +389,7 @@ public partial class ManualContentViewModel : ObservableBase
             return;
         }
 
+        long request = ++axis.JogRequest;
         axis.JogHeld = true;
         try
         {
@@ -409,24 +410,25 @@ public partial class ManualContentViewModel : ObservableBase
             });
             if (blocked is not null)
             {
-                axis.JogHeld = false;
+                ReleaseThisRequest();
                 await RecordAxisErrorAsync(new InvalidOperationException(blocked));
             }
         }
-        catch (OperationCanceledException) { axis.JogHeld = false; }
+        catch (OperationCanceledException) { ReleaseThisRequest(); }
         catch (Exception ex)
         {
-            axis.JogHeld = false;
+            ReleaseThisRequest();
             await RecordAxisErrorAsync(ex);
+        }
+        void ReleaseThisRequest()
+        {
+            if (axis.JogRequest == request)
+                axis.JogHeld = false;
         }
     }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
-    private async Task ReleaseJogAsync(MotionAxisProfile? axis)
-    {
-        if (axis?.JogHeld == true)
-            await StopAsync(axis, false);
-    }
+    private Task ReleaseJogAsync(MotionAxisProfile? axis) => StopAsync(axis, false);
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     private Task SmoothStopAsync(MotionAxisProfile? axis) => StopAsync(axis, false);
