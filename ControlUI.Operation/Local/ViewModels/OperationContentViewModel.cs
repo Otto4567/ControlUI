@@ -343,6 +343,8 @@ namespace ControlUI.Operation.Local.ViewModels
                         var moves = BuildMoves(step);
                         if (step.Action == StepAction.Wait)
                         {
+                            if (step.WaitMilliseconds < 0)
+                                throw new InvalidOperationException("Wait time must be zero or greater (ms).");
                         }
                         else
                         {
