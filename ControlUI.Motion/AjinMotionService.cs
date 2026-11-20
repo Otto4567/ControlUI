@@ -39,10 +39,12 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
         ConfigurationChanged?.Invoke(this, EventArgs.Empty);
     }
     private volatile bool _initialized;
-    private readonly object _dispatchLock = new();
+    // AXM reference does not establish concurrent stop-call safety. Serialize only dispatch and close.
+    public MotionDispatch Dispatch { get; } = new();
     private readonly object _motionLock = new();
     public bool IsReady { get; private set; }
-    public bool IsOperationActive { get; private set; }
+    private volatile bool _operationActive;
+    public bool IsOperationActive => _operationActive;
     private volatile bool _operationStopRequested;
     public bool IsOperationStopRequested => _operationStopRequested;
 
@@ -52,7 +54,7 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
     {
         _shuttingDown = true;
         _operationStopRequested = true;
-        lock (_dispatchLock)
+        lock (Dispatch.Gate)
         {
             if (!_initialized)
                 return;
@@ -71,34 +73,36 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
 
     private void DispatchStart(Func<uint> start, string name, int? axis = null)
     {
-        lock (_dispatchLock)
+        lock (Dispatch.Gate)
         {
             if (_shuttingDown)
                 throw new InvalidOperationException("Motion is shutting down.");
+            Dispatch.CheckStart();
+            if (IsOperationActive && _operationStopRequested)
+                throw new OperationCanceledException("Operation stopped before dispatch.");
             Check(start(), name, axis);
         }
     }
 
     public void StopForShutdown()
     {
-        lock (_motionLock)
+        _shuttingDown = true;
+        _operationStopRequested = true;
+        int[] axes;
+        lock (Dispatch.Gate)
         {
-            _shuttingDown = true;
-            _operationStopRequested = true;
             if (!_initialized)
                 return;
-
-            int[] axes = Enumerable.Range(0, GetAxisCount()).ToArray();
+            axes = Enumerable.Range(0, GetAxisCount()).ToArray();
             if (axes.Length > 0)
                 StopAxes(axes, abrupt: false);
-
-            var timeout = System.Diagnostics.Stopwatch.StartNew();
-            while (axes.Any(IsAxisMoving))
-            {
-                if (timeout.Elapsed >= TimeSpan.FromSeconds(10))
-                    throw new TimeoutException("Motion did not stop within ten seconds.");
-                System.Threading.Thread.Sleep(50);
-            }
+        }
+        var timeout = System.Diagnostics.Stopwatch.StartNew();
+        while (axes.Any(IsAxisMoving))
+        {
+            if (timeout.Elapsed >= TimeSpan.FromSeconds(10))
+                throw new TimeoutException("Motion did not stop within ten seconds.");
+            Thread.Sleep(50);
         }
     }
 
@@ -116,15 +120,19 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
             if (_shuttingDown || !IsReady || IsOperationActive)
                 throw new InvalidOperationException("Motion is unavailable.");
             EnsureAxesStopped();
-            _operationStopRequested = false;
-            IsOperationActive = true;
+            lock (Dispatch.Gate)
+            {
+                Dispatch.CheckStart();
+                _operationStopRequested = false;
+                _operationActive = true;
+            }
         }
     }
 
     public void EndOperation()
     {
         lock (_motionLock)
-            IsOperationActive = false;
+            _operationActive = false;
     }
 
     public static void VerifyNativeLibrary()
@@ -455,17 +463,14 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
                 throw new InvalidOperationException("Alarm reset requires a stopped axis and a clear emergency input.");
             if (!state.Alarm)
                 return;
-            uint result = 0;
-            try
-            {
-                Check(CAXM.AxmSignalServoAlarmReset(axisNumber, 1), nameof(CAXM.AxmSignalServoAlarmReset), axisNumber);
-                System.Threading.Thread.Sleep(100);
-            }
-            finally
-            {
-                result = CAXM.AxmSignalServoAlarmReset(axisNumber, 0);
-            }
-            Check(result, nameof(CAXM.AxmSignalServoAlarmReset), axisNumber);
+            Check(CAXM.AxmSignalServoAlarmReset(axisNumber, 1), nameof(CAXM.AxmSignalServoAlarmReset), axisNumber);
+        }
+        try { Thread.Sleep(100); }
+        finally
+        {
+            lock (_motionLock)
+                if (_initialized)
+                    Check(CAXM.AxmSignalServoAlarmReset(axisNumber, 0), nameof(CAXM.AxmSignalServoAlarmReset), axisNumber);
         }
     }
 
@@ -600,8 +605,9 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
 
     public void StopAxis(int axisNumber, bool abrupt)
     {
-        lock (_motionLock)
+        lock (Dispatch.Gate)
         {
+            Dispatch.Invalidate();
             EnsureInitialized();
             if (IsOperationActive)
                 _operationStopRequested = true;
@@ -616,8 +622,9 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
 
     private void StopAxes(int[] axisNumbers, bool abrupt, bool pause)
     {
-        lock (_motionLock)
+        lock (Dispatch.Gate)
         {
+            Dispatch.Invalidate();
             EnsureInitialized();
             if (pause)
                 EnsureOperationCanMove();
@@ -658,7 +665,7 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
 
     private void CloseSession()
     {
-        lock (_dispatchLock)
+        lock (Dispatch.Gate)
             CloseSessionCore();
     }
 

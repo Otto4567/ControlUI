@@ -4,6 +4,7 @@ namespace ControlUI.Support.Services;
 
 public interface IMotionService : IDisposable
 {
+    MotionDispatch Dispatch { get; }
     bool IsSimulation => false;
     MotionPreferences Configuration { get; }
     event EventHandler<EventArgs>? ConfigurationChanged;

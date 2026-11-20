@@ -153,6 +153,7 @@ namespace ControlUI.Operation.Local.ViewModels
 
         private async Task<T> AccessMotionAsync<T>(Func<T> action, CancellationToken cancellation = default)
         {
+            action = _motion.Dispatch.Capture(action);
             await _queue.WaitAsync(cancellation);
             try { return await Task.Run(action, cancellation); }
             finally { _queue.Release(); }
@@ -585,8 +586,11 @@ namespace ControlUI.Operation.Local.ViewModels
             finally { _stopRequest = null; _stopping = false; RefreshCommands(); }
         }
 
-        private Task StopAxesAsync() =>
-            AccessMotionAsync(() => _motion.StopAxes(Axes.Select(axis => axis.Number).ToArray(), false));
+        private Task StopAxesAsync()
+        {
+            int[] numbers = Axes.Select(axis => axis.Number).ToArray();
+            return Task.Run(() => _motion.StopAxes(numbers, false));
+        }
 
         private async Task OperateAsync(string name, Func<CancellationToken, Task> action, bool sequence = false)
         {

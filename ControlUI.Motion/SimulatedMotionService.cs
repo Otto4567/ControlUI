@@ -7,10 +7,12 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
 {
     private const double TravelLimit = 1000;
     private const double FollowingDelaySeconds = 0.04;
+    public MotionDispatch Dispatch { get; } = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, (long Time, bool Abrupt)> _stops = new();
     private readonly object _gate = new();
     private Dictionary<int, Axis> _axes = CreateAxes(configuration ?? new MotionPreferences());
     private static Dictionary<int, Axis> CreateAxes(MotionPreferences configuration) => configuration.Axes
-        .ToDictionary(axis => axis.Number, axis => new Axis(axis.MillimetersPerPulse, axis.MaxSpeed));
+        .ToDictionary(axis => axis.Number, axis => new Axis(axis.Number, axis.MillimetersPerPulse, axis.MaxSpeed));
     public MotionPreferences Configuration { get; private set; } = configuration ?? new MotionPreferences();
     public event EventHandler<EventArgs>? ConfigurationChanged;
 
@@ -107,24 +109,18 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
 
     public void StopForShutdown()
     {
-        lock (_gate)
-        {
-            _shuttingDown = true;
-            if (!_ready)
-                return;
+        _shuttingDown = true;
+        if (!_ready)
+            return;
 
-            StopAxes(_axes.Keys.ToArray(), abrupt: false);
-            var timeout = System.Diagnostics.Stopwatch.StartNew();
-            while (true)
-            {
-                foreach (var axis in _axes.Values)
-                    Update(axis);
-                if (_axes.Values.All(axis => !axis.Moving))
-                    return;
-                if (timeout.Elapsed >= TimeSpan.FromSeconds(10))
-                    throw new TimeoutException("Simulated motion did not stop within ten seconds.");
-                System.Threading.Thread.Sleep(50);
-            }
+        int[] axes = _axes.Keys.ToArray();
+        StopAxes(axes, abrupt: false);
+        var timeout = System.Diagnostics.Stopwatch.StartNew();
+        while (axes.Any(number => ReadAxis(number).Moving))
+        {
+            if (timeout.Elapsed >= TimeSpan.FromSeconds(10))
+                throw new TimeoutException("Simulated motion did not stop within ten seconds.");
+            Thread.Sleep(50);
         }
     }
 
@@ -137,8 +133,12 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
                 Update(axis);
             if (_shuttingDown || _operationActive || _axes.Values.Any(axis => axis.Moving))
                 throw new InvalidOperationException("Simulated motion is already in use.");
-            _operationStopped = false;
-            _operationActive = true;
+            lock (Dispatch.Gate)
+            {
+                Dispatch.CheckStart();
+                _operationStopped = false;
+                _operationActive = true;
+            }
         }
     }
 
@@ -251,18 +251,19 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
 
     private void StopAxes(int[] axisNumbers, bool abrupt, bool pause)
     {
-        lock (_gate)
+        lock (Dispatch.Gate)
         {
             RequireReady();
             if (pause && (!_operationActive || _operationStopped))
                 throw new InvalidOperationException("No active operation can be paused.");
-            _operationStopped |= !pause && _operationActive;
+            Dispatch.Invalidate();
+            if (!pause && _operationActive)
+                _operationStopped = true;
+            long time = clock.GetTimestamp();
             foreach (int number in axisNumbers)
             {
-                var axis = _axes[number];
-                Update(axis);
-                if (axis.Moving)
-                    Stop(axis, abrupt);
+                _stops.AddOrUpdate(number, (time, abrupt), (_, previous) =>
+                    abrupt && !previous.Abrupt ? (time, true) : previous);
             }
         }
     }
@@ -303,6 +304,7 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
     private void Start(Axis axis, double target, double speed, double accel, double decel,
         double minimumDuration = 0, long? timestamp = null)
     {
+        Dispatch.CheckStart();
         double start = axis.CommandPosition;
         double distance = Math.Abs(target - start);
         double direction = Math.Sign(target - start);
@@ -335,11 +337,10 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
         axis.Moving = axis.Duration > 0;
     }
 
-    private void Stop(Axis axis, bool abrupt)
+    private void Stop(Axis axis, bool abrupt, long timestamp)
     {
         axis.Homing = false;
         var previous = axis.Trajectory!;
-        long timestamp = clock.GetTimestamp();
         double elapsed = clock.GetElapsedTime(axis.Timestamp, timestamp).TotalSeconds;
         var (position, velocity) = previous(elapsed);
         double duration = abrupt ? 0 : Math.Abs(velocity) / axis.Deceleration;
@@ -361,6 +362,11 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
 
     private void Update(Axis axis)
     {
+        if (_stops.TryRemove(axis.Number, out var stop) && axis.Moving)
+        {
+            Stop(axis, stop.Abrupt, Math.Max(stop.Time, axis.Timestamp));
+            return;
+        }
         if (!axis.Moving || axis.Trajectory is not { } sample)
             return;
 
@@ -394,8 +400,9 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
             throw new InvalidOperationException("Initialize simulated motion first.");
     }
 
-    private sealed class Axis(double millimetersPerPulse, double maxSpeed)
+    private sealed class Axis(int number, double millimetersPerPulse, double maxSpeed)
     {
+        public int Number { get; } = number;
         public double MillimetersPerPulse { get; } = millimetersPerPulse;
         public double MaxSpeed { get; } = maxSpeed;
         public bool Alarm, Moving, Homed, Homing;

@@ -267,7 +267,11 @@ public partial class ManualContentViewModel : ObservableBase
             MotionStatus = ex.Message;
             if (ownsMotion && !_motionService.IsOperationStopRequested && name == "Homing")
             {
-                try { await RunAxisAsync(() => _motionService.StopAxes(MotionAxes.Select(axis => axis.AxisNumber).ToArray(), false)); }
+                try
+                {
+                    var axes = MotionAxes.Select(axis => axis.AxisNumber).ToArray();
+                    await Task.Run(() => _motionService.StopAxes(axes, false));
+                }
                 catch (Exception stopError) { MotionStatus += $" Stop failed: {stopError.Message}"; }
             }
             _ = WriteMotionLogAsync("Error", MotionStatus);
@@ -282,6 +286,7 @@ public partial class ManualContentViewModel : ObservableBase
 
     private async Task<T> OnMotionThreadAsync<T>(Func<T> operation)
     {
+        operation = _motionService.Dispatch.Capture(operation);
         await _motionQueue.WaitAsync();
         try
         {
@@ -334,7 +339,7 @@ public partial class ManualContentViewModel : ObservableBase
             }
 
             int[] axes = MotionAxes.Select(axis => axis.AxisNumber).ToArray();
-            await RunAxisAsync(() => _motionService.StopAxes(axes, abrupt));
+            await Task.Run(() => _motionService.StopAxes(axes, abrupt));
             _commandFailed = false;
             _allStopRequested = true;
             MotionStatus = abrupt ? "All axes: abrupt stop requested." : "All axes: deceleration stop requested.";
@@ -458,7 +463,7 @@ public partial class ManualContentViewModel : ObservableBase
         axis.JogHeld = false;
         try
         {
-            await RunAxisAsync(() => _motionService.StopAxis(axis.AxisNumber, abrupt));
+            await Task.Run(() => _motionService.StopAxis(axis.AxisNumber, abrupt));
         }
         catch (Exception ex) { await RecordAxisErrorAsync(ex); }
     }
