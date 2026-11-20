@@ -457,7 +457,7 @@ namespace ControlUI.Operation.Local.ViewModels
             RefreshCommands();
             var cancellation = _operation;
             cancellation?.Cancel();
-            var stop = IsSequenceRunning ? _engine.StopAsync() : StopAxesAsync();
+            var stop = IsSequenceRunning ? Task.WhenAll(_engine.StopAsync(), StopAxesAsync()) : StopAxesAsync();
             _stopRequest = stop;
             try
             {

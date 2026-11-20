@@ -121,6 +121,41 @@ public sealed class SequenceEngineTests : IAsyncLifetime
         Assert.Equal(0, _motion.ReadAxis(0).CommandPosition);
     }
 
+    [Fact]
+    public async Task AlarmDuringWaitFaultsTheSequence()
+    {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _engine.Progress += p => { if (p.Step != null) started.TrySetResult(); };
+        var run = _engine.RunAsync(Wait(10_000));
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        _motion.SimulateAlarm(0);
+        Assert.Equal(SequenceOutcome.Fault, (await run.WaitAsync(TimeSpan.FromSeconds(5))).Outcome);
+        Assert.False(_motion.IsOperationActive);
+    }
+
+    [Fact]
+    public async Task HalfSpeedWaitResumesWithItsRemainingScaledDuration()
+    {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var paused = new TaskCompletionSource<TimeSpan>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _engine.Progress += p =>
+        {
+            if (p.Step != null) started.TrySetResult();
+            if (p.PauseSettled && p.StepElapsed is { } elapsed) paused.TrySetResult(elapsed);
+        };
+        var run = _engine.RunAsync(Wait(800) with { SpeedFactor = 0.5 });
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Task.Delay(600);
+        _engine.Pause();
+        var elapsed = await paused.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Task.Delay(1700);
+        Assert.False(run.IsCompleted);
+        var resumed = System.Diagnostics.Stopwatch.StartNew();
+        Assert.True(_engine.Resume());
+        Assert.Equal(SequenceOutcome.Completed, (await run.WaitAsync(TimeSpan.FromSeconds(5))).Outcome);
+        Assert.InRange((elapsed + resumed.Elapsed).TotalMilliseconds, 1550, 1950);
+    }
+
     private static async Task UntilAsync(Func<bool> ready)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));

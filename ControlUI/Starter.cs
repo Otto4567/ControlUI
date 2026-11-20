@@ -12,20 +12,23 @@ namespace ControlUI
         {
             bool simulateMotion = Array.Exists(args, arg => arg.Equals("--simulate-motion", StringComparison.OrdinalIgnoreCase));
             bool simulateAlarm = Array.Exists(args, arg => arg.Equals("--simulate-alarm", StringComparison.OrdinalIgnoreCase));
+            bool running = false;
             App? app = null;
             try
             {
                 app = new App(simulateMotion, simulateAlarm);
-                return app.AddInversionModule<HelperModules>()
+                var application = app.AddInversionModule<HelperModules>()
                     .AddInversionModule<ViewModules>()
-                    .AddWireDataContext<WireDataContext>()
-                    .Run();
+                    .AddWireDataContext<WireDataContext>();
+                running = true;
+                return application.Run();
             }
             catch (Exception error)
             {
                 try { app?.MotionService.StopForUnhandledException(); }
                 catch (Exception stopError) { error = new AggregateException(error, stopError); }
 
+                string phase = running ? "runtime" : "startup";
                 string config = Path.Combine(AppContext.BaseDirectory, "machine-paths.json");
                 string details = $"Configuration file: {config}";
                 try { details += $"\nData directory: {MachinePaths.Root}"; }
@@ -34,12 +37,12 @@ namespace ControlUI
                 string message = $"{error.GetBaseException().Message}\n\n{details}";
                 try
                 {
-                    string path = Path.Combine(Path.GetTempPath(), $"ControlUI-startup-{Guid.NewGuid():N}.log");
+                    string path = Path.Combine(Path.GetTempPath(), $"ControlUI-{phase}-{Guid.NewGuid():N}.log");
                     File.WriteAllText(path, $"{DateTimeOffset.Now:O}\n{details}\n{error}");
                     message += $"\nError log: {path}";
                 }
                 catch (Exception logError) { message += $"\nCould not write the temporary log: {logError.Message}"; }
-                MessageBox.Show(message, "ControlUI startup error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(message, $"ControlUI {phase} error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return 1;
             }
         }

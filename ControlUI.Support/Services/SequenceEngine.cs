@@ -109,6 +109,7 @@ public sealed class SequenceEngine(IMotionService motion)
                         _unfinished = true;
                         Publish("Info", $"{plan.Name} / {step.Page} · {_step} · Started.");
                         if (step.Action == StepAction.Wait)
+                            // Speed override scales cycle time, including waits: 50% doubles the delay.
                             await WaitStepAsync(step.WaitMilliseconds / plan.SpeedFactor).ConfigureAwait(false);
                         else
                             await MoveAsync(step.Moves).ConfigureAwait(false);
