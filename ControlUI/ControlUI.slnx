@@ -12,6 +12,9 @@
     </Project>
   </Folder>
   <Folder Name="/Common/">
+    <Project Path="../ControlUI.Motion/ControlUI.Motion.csproj" Id="7f22b64f-47b4-4808-9679-f98b69bc741b">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
     <Project Path="../ControlUI.Support/ControlUI.Support.csproj" Id="451b3b4e-af11-45c2-bd01-da75e9b3763b">
       <Platform Solution="*|x64" Project="x64" />
     </Project>

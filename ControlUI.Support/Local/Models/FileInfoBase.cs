@@ -8,8 +8,8 @@ namespace ControlUI.Support.Local.Models
         [ObservableProperty]
         private bool _isDenied;
 
-        public string Name { get; set; }
-        public string FullPath { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string FullPath { get; set; } = string.Empty;
         public int Depth { get; set; }
         public long Length { get; set; }
         public IconType IconType { get; set; }

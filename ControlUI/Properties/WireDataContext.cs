@@ -7,6 +7,12 @@ using ControlUI.Main.Local.ViewModels;
 using ControlUI.Main.UI.Views;
 using ControlUI.Operation.UI.Views;
 using ControlUI.Operation.Local.ViewModels;
+using ControlUI.Manual.Local.ViewModels;
+using ControlUI.Manual.UI.Views;
+using ControlUI.Sequence.Local.ViewModels;
+using ControlUI.Sequence.UI.Views;
+using ControlUI.Settings.Local.ViewModels;
+using ControlUI.Settings.UI.Views;
 
 namespace ControlUI.Properties
 {
@@ -18,6 +24,9 @@ namespace ControlUI.Properties
             items.Register<MainContent, MainContentViewModel>();
             items.Register<LocationContent, LocationContentViewModel>();
             items.Register<OperationContentView, OperationContentViewModel>();
+            items.Register<ManualContentView, ManualContentViewModel>();
+            items.Register<SequenceContentView, SequenceContentViewModel>();
+            items.Register<SettingsContentView, SettingsContentViewModel>();
         }
     }
 }

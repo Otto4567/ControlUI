@@ -2,51 +2,38 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:units="clr-namespace:ControlUI.Operation.UI.Units">
     <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/OperationStyles.xaml" />
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/OperationStyles.xaml"/>
     </ResourceDictionary.MergedDictionaries>
-    <Style x:Key="AxisValueText" TargetType="TextBlock">
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="HorizontalAlignment" Value="Right" />
-        <Setter Property="Margin" Value="4,0" />
-        <Setter Property="FontSize" Value="12" />
-    </Style>
-    <Style x:Key="AxisCenterText" TargetType="TextBlock" BasedOn="{StaticResource AxisValueText}">
-        <Setter Property="HorizontalAlignment" Value="Center" />
+    <Style x:Key="AxisNumber" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Consolas"/>
+        <Setter Property="TextAlignment" Value="Right"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="4,0"/>
     </Style>
     <Style TargetType="{x:Type units:DeviceStatusPanel}">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type units:DeviceStatusPanel}">
-                    <Border Style="{StaticResource OperationCard}" Padding="14">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-                            <TextBlock Text="Device Status" Style="{StaticResource OperationHeading}" />
-                            <DataGrid Grid.Row="1" ItemsSource="{Binding Axes}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="False" CanUserSortColumns="False" CanUserResizeRows="False" CanUserResizeColumns="False" HeadersVisibility="Column" RowHeight="30" ColumnHeaderHeight="40" MinColumnWidth="54" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionMode="Single" SelectionUnit="FullRow">
-
+                    <Border Style="{StaticResource OperationCard}" Padding="10">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="{DynamicResource TextDeviceStatus}" Style="{StaticResource OperationHeading}"/>
+                            <DataGrid ItemsSource="{Binding Axes}" IsReadOnly="True" AutoGenerateColumns="False"
+                                      CanUserSortColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
+                                      RowHeight="36" ColumnHeaderHeight="24" MaxHeight="172"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Axis" Width="0.65*" Binding="{Binding Axis}" ElementStyle="{StaticResource AxisCenterText}" />
-                                    <DataGridTemplateColumn Header="Link" Width="0.65*">
+                                    <DataGridTextColumn Header="Axis" Binding="{Binding Axis}" Width="56"/>
+                                    <DataGridTemplateColumn Header="Link" Width="74">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <TextBlock VerticalAlignment="Center" TextAlignment="Center">
                                                     <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Text" Value="—" />
-                                                            <Setter Property="Foreground" Value="#989FA8" />
-                                                            <Setter Property="ToolTip" Value="Connection status unavailable" />
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                            <Setter Property="Text" Value="Offline"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                                                                    <Setter Property="Text" Value="●" />
-                                                                    <Setter Property="Foreground" Value="#65C996" />
-                                                                    <Setter Property="ToolTip" Value="Connected" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsConnected}" Value="False">
-                                                                    <Setter Property="Text" Value="●" />
-                                                                    <Setter Property="Foreground" Value="#DC7777" />
-                                                                    <Setter Property="ToolTip" Value="Disconnected" />
+                                                                    <Setter Property="Text" Value="Online"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -55,40 +42,146 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Position&#xA;mm" Width="1.4*" Binding="{Binding Position, StringFormat={}{0:F3}, TargetNullValue=—}" ElementStyle="{StaticResource AxisValueText}" />
-                                    <DataGridTextColumn Header="Speed&#xA;mm/s" Width="1.1*" Binding="{Binding Speed, StringFormat={}{0:F2}, TargetNullValue=—}" ElementStyle="{StaticResource AxisValueText}" />
-                                    <DataGridTextColumn Header="Accel&#xA;mm/s²" Width="1.1*" Binding="{Binding Acceleration, StringFormat={}{0:F1}, TargetNullValue=—}" ElementStyle="{StaticResource AxisValueText}" />
-                                    <DataGridTextColumn Header="Decel&#xA;mm/s²" Width="1.1*" Binding="{Binding Deceleration, StringFormat={}{0:F1}, TargetNullValue=—}" ElementStyle="{StaticResource AxisValueText}" />
-                                    <DataGridTemplateColumn Header="Homed" Width="0.9*">
+                                    <DataGridTextColumn Header="Cmd (mm)" Binding="{Binding CommandPosition, StringFormat={}{0:F3}, TargetNullValue=—}" ElementStyle="{StaticResource AxisNumber}" Width="*" MinWidth="64"/>
+                                    <DataGridTextColumn Header="Act (mm)" Binding="{Binding Position, StringFormat={}{0:F3}, TargetNullValue=—}" ElementStyle="{StaticResource AxisNumber}" Width="*" MinWidth="64"/>
+                                    <DataGridTextColumn Header="mm/s" Binding="{Binding Speed, StringFormat={}{0:F2}, TargetNullValue=—}" ElementStyle="{StaticResource AxisNumber}" Width="*" MinWidth="54"/>
+                                    <DataGridTemplateColumn Header="Signals" Width="3*" MinWidth="220">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Text" Value="—" />
-                                                            <Setter Property="Foreground" Value="#989FA8" />
-                                                            <Setter Property="ToolTip" Value="Homing status unavailable" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsHomed}" Value="True">
-                                                                    <Setter Property="Text" Value="✓" />
-                                                                    <Setter Property="Foreground" Value="#65C996" />
-                                                                    <Setter Property="ToolTip" Value="Homing completed" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsHomed}" Value="False">
-                                                                    <Setter Property="Text" Value="No" />
-                                                                    <Setter Property="Foreground" Value="#E7BD6D" />
-                                                                    <Setter Property="ToolTip" Value="Not homed" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
+                                                <UniformGrid Columns="5" VerticalAlignment="Center">
+                                                    <TextBlock Text="Servo" Margin="2,0" TextAlignment="Center" FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                                <Setter Property="Opacity" Value="0.55"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding ServoOn}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}"/>
+                                                                        <Setter Property="Opacity" Value="1"/>
+                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="Alarm" Margin="2,0" TextAlignment="Center" FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                                <Setter Property="Opacity" Value="0.55"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Alarm}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}"/>
+                                                                        <Setter Property="Opacity" Value="1"/>
+                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="Moving" Margin="2,0" TextAlignment="Center" FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                                <Setter Property="Opacity" Value="0.55"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Moving}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}"/>
+                                                                        <Setter Property="Opacity" Value="1"/>
+                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="In Pos" Margin="2,0" TextAlignment="Center" FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                                <Setter Property="Opacity" Value="0.55"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding InPosition}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}"/>
+                                                                        <Setter Property="Opacity" Value="1"/>
+                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="Home Sig" Margin="2,0" TextAlignment="Center" FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                                <Setter Property="Opacity" Value="0.55"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HomeSignal}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}"/>
+                                                                        <Setter Property="Opacity" Value="1"/>
+                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="Homed" Margin="2,0" TextAlignment="Center" FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                                <Setter Property="Opacity" Value="0.55"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsHomed}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}"/>
+                                                                        <Setter Property="Opacity" Value="1"/>
+                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="+Limit" Margin="2,0" TextAlignment="Center" FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                                <Setter Property="Opacity" Value="0.55"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding PositiveLimit}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}"/>
+                                                                        <Setter Property="Opacity" Value="1"/>
+                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="−Limit" Margin="2,0" TextAlignment="Center" FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                                <Setter Property="Opacity" Value="0.55"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding NegativeLimit}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}"/>
+                                                                        <Setter Property="Opacity" Value="1"/>
+                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="EMG" Margin="2,0" TextAlignment="Center" FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                                <Setter Property="Opacity" Value="0.55"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Emergency}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}"/>
+                                                                        <Setter Property="Opacity" Value="1"/>
+                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </UniformGrid>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
                                 </DataGrid.Columns>
                             </DataGrid>
-                        </Grid>
+                        </DockPanel>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>

@@ -12,7 +12,7 @@ namespace ControlUI.Support.Local.Helpers
             {
                 new("operation", "Operation", IconType.Home),
                 new("manual", "Manual", IconType.ViewColumn),
-                new("sequence", "Sequence", IconType.FormatListBulleted),
+                new("sequence", "Project", IconType.FormatListBulleted),
                 new("settings", "Settings", IconType.Cog)
             };
         }

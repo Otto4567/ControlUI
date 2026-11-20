@@ -3,7 +3,7 @@
     public class LocationInfo : FileInfoBase
     {
         public int Zindex { get; set; }
-        public string Color { get; set; }
+        public string Color { get; set; } = string.Empty;
         public bool IsRoot { get; set; }
         public bool IsLast { get; set; }
         public LocationInfo(string name, string fullName)

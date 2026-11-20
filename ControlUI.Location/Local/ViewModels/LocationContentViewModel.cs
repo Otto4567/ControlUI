@@ -1,7 +1,7 @@
 ﻿using System;
 using CommunityToolkit.Mvvm.Input;
 using Jamesnet.Wpf.Mvvm;
-using ControlUI.Support.Local.Helpers;
+using ControlUI.Support.Services;
 
 namespace ControlUI.Location.Local.ViewModels
 {

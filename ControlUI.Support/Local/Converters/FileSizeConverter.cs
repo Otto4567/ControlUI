@@ -7,19 +7,21 @@ namespace ControlUI.Support.Local.Converters
 {
     public class FileSizeConverter : MarkupExtension, IValueConverter
     {
+        private static readonly string[] Units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            value = value ?? 0;
-            string[] units = { "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
-            double size = long.Parse(value.ToString());
+            if (!long.TryParse(value?.ToString(), out long bytes) || bytes == 0)
+                return string.Empty;
+
+            double size = bytes;
             int unit = 0;
-            while (size >= 1024 && unit < units.Length - 1)
+            while (size >= 1024 && unit < Units.Length - 1)
             {
                 size /= 1024;
                 ++unit;
             }
-            if (size == 0) return "";
-            return String.Format("{0:#,##0.#}{1}", size, units[unit]);
+            return string.Format(culture, "{0:#,##0.#}{1}", size, Units[unit]);
         }
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {

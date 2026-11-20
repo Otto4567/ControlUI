@@ -9,25 +9,102 @@
                     <Border Style="{StaticResource OperationCard}">
                         <ScrollViewer CanContentScroll="False" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                             <StackPanel MinWidth="230">
-                                <TextBlock Text="System Status" Style="{StaticResource OperationHeading}" />
-                                <TextBlock Text="OFFLINE" Foreground="#D9B66F" FontSize="22" FontWeight="SemiBold" />
-                                <TextBlock Text="Device services are not connected." Style="{StaticResource OperationMuted}" Margin="0,4,0,12" />
+                                <TextBlock Text="{DynamicResource TextSystemStatus}" Style="{StaticResource OperationHeading}" />
+                                <TextBlock Text="SIMULATION" FontWeight="SemiBold" Foreground="{DynamicResource WarningForegroundBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSimulation}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <Border Margin="0,4,0,0" Padding="8,6" MinHeight="42" CornerRadius="6"
+                                        AutomationProperties.Name="{Binding Tag, RelativeSource={RelativeSource Self}}">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#424956"/>
+                                            <Setter Property="Tag" Value="{DynamicResource TextOFFLINE}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding MainStatus}" Value="Standby">
+                                                    <Setter Property="Background" Value="#405570"/>
+                                                    <Setter Property="Tag" Value="{DynamicResource TextMainStatusStandby}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MainStatus}" Value="Ready">
+                                                    <Setter Property="Background" Value="#17644F"/>
+                                                    <Setter Property="Tag" Value="{DynamicResource TextMainStatusReady}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MainStatus}" Value="Busy">
+                                                    <Setter Property="Background" Value="#245493"/>
+                                                    <Setter Property="Tag" Value="{DynamicResource TextMainStatusBusy}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MainStatus}" Value="Running">
+                                                    <Setter Property="Background" Value="#17644F"/>
+                                                    <Setter Property="Tag" Value="{DynamicResource TextMainStatusRunning}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MainStatus}" Value="Pausing">
+                                                    <Setter Property="Background" Value="#835500"/>
+                                                    <Setter Property="Tag" Value="{DynamicResource TextMainStatusPausing}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MainStatus}" Value="Paused">
+                                                    <Setter Property="Background" Value="#835500"/>
+                                                    <Setter Property="Tag" Value="{DynamicResource TextMainStatusPaused}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MainStatus}" Value="Stopping">
+                                                    <Setter Property="Background" Value="#9A4719"/>
+                                                    <Setter Property="Tag" Value="{DynamicResource TextMainStatusStopping}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MainStatus}" Value="Stopped">
+                                                    <Setter Property="Background" Value="#8C2835"/>
+                                                    <Setter Property="Tag" Value="{DynamicResource TextMainStatusStopped}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MainStatus}" Value="Completed">
+                                                    <Setter Property="Background" Value="#245493"/>
+                                                    <Setter Property="Tag" Value="{DynamicResource TextMainStatusCompleted}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MainStatus}" Value="Fault">
+                                                    <Setter Property="Background" Value="#8C2835"/>
+                                                    <Setter Property="Tag" Value="{DynamicResource TextMainStatusFault}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=Border}}"
+                                               Foreground="White" FontSize="20" FontWeight="Bold"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="{Binding OperationStatus}" TextWrapping="Wrap" Style="{StaticResource OperationMuted}" Margin="0,4,0,5" />
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="24" />
-                                        <RowDefinition Height="24" />
-                                        <RowDefinition Height="24" />
+                                        <RowDefinition Height="18" />
+                                        <RowDefinition Height="18" />
+                                        <RowDefinition Height="18" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Text="Motion" Style="{StaticResource OperationText}" Grid.Row="0" />
-                                    <TextBlock Text="Disconnected" Style="{StaticResource OperationMuted}" Grid.Row="0" Grid.Column="1" />
-                                    <TextBlock Text="Light" Style="{StaticResource OperationText}" Grid.Row="1" />
-                                    <TextBlock Text="Disconnected" Style="{StaticResource OperationMuted}" Grid.Row="1" Grid.Column="1" />
-                                    <TextBlock Text="Trigger" Style="{StaticResource OperationText}" Grid.Row="2" />
-                                    <TextBlock Text="Disconnected" Style="{StaticResource OperationMuted}" Grid.Row="2" Grid.Column="1" />
+                                    <TextBlock Text="{DynamicResource TextMotion}" Style="{StaticResource OperationText}" Grid.Row="0" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource OperationMuted}">
+                                                <Setter Property="Text" Value="{DynamicResource TextDisconnected}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding MotionOnline}" Value="True">
+                                                        <Setter Property="Text" Value="Connected"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{DynamicResource TextLight}" Style="{StaticResource OperationText}" Grid.Row="1" />
+                                    <TextBlock Text="{DynamicResource TextDisconnected}" Style="{StaticResource OperationMuted}" Grid.Row="1" Grid.Column="1" />
+                                    <TextBlock Text="{DynamicResource TextTrigger}" Style="{StaticResource OperationText}" Grid.Row="2" />
+                                    <TextBlock Text="{DynamicResource TextDisconnected}" Style="{StaticResource OperationMuted}" Grid.Row="2" Grid.Column="1" />
                                 </Grid>
                             </StackPanel>
                         </ScrollViewer>

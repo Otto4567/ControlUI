@@ -1,4 +1,4 @@
-﻿using Jamesnet.Wpf.Controls;
+using Jamesnet.Wpf.Controls;
 using Jamesnet.Wpf.Mvvm;
 using Prism.Ioc;
 using Prism.Regions;
@@ -43,33 +43,6 @@ namespace ControlUI.Forms.Local.ViewModels
             if (window is null) return;
 
             window.Topmost = !window.Topmost;
-        }
-
-        [RelayCommand]
-        private void Minimize(Window? window)
-        {
-            if (window is null) return;
-
-            SystemCommands.MinimizeWindow(window);
-        }
-
-        [RelayCommand]
-        private void ToggleMaximize(Window? window)
-        {
-            if (window is null) return;
-
-            if (window.WindowState == WindowState.Maximized)
-                SystemCommands.RestoreWindow(window);
-            else
-                SystemCommands.MaximizeWindow(window);
-        }
-
-        [RelayCommand]
-        private void Close(Window? window)
-        {
-            if (window is null) return;
-
-            SystemCommands.CloseWindow(window);
         }
     }
 }

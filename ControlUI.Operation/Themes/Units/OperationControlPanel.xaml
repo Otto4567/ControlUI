@@ -3,12 +3,37 @@
         <ResourceDictionary Source="/ControlUI.Operation;component/Themes/OperationStyles.xaml" />
     </ResourceDictionary.MergedDictionaries>
     <Style x:Key="OperationActionButton" TargetType="Button" BasedOn="{StaticResource OperationButton}">
-        <Setter Property="MinHeight" Value="84" />
+        <Setter Property="MinHeight" Value="58" />
         <Setter Property="Margin" Value="3,0" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Padding" Value="4,10" />
-        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="3,5" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="5"
+                            BorderBrush="{DynamicResource ActionButtonBorderBrush}" BorderThickness="1"
+                            Padding="{TemplateBinding Padding}" TextElement.Foreground="{TemplateBinding Foreground}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Surface" Property="Opacity" Value="0.88"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Surface" Property="Opacity" Value="0.7"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource SelectionIndicatorBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ActionButtonBackgroundBrush}"/>
+                            <Setter TargetName="Surface" Property="TextElement.Foreground" Value="{DynamicResource MutedForegroundBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
     <Style TargetType="{x:Type units:OperationControlPanel}">
         <Setter Property="Template">
@@ -19,43 +44,52 @@
                             <Grid MinWidth="280">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="Controls" Style="{StaticResource OperationHeading}" />
-                                <UniformGrid Grid.Row="1" Rows="1" Columns="5" VerticalAlignment="Center">
-                                    <Button ToolTip="Home All Axes" AutomationProperties.Name="Home" Style="{StaticResource OperationActionButton}" Background="#E7C64B" Foreground="#25200D" IsEnabled="False">
+                                <TextBlock Text="{DynamicResource TextControls}" Style="{StaticResource OperationHeading}" />
+                                <StackPanel Grid.Row="1" Margin="0,0,0,8">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding SpeedPercent, StringFormat={}{0}%}"
+                                                   Style="{StaticResource OperationText}"/>
+                                        <TextBlock Text="{DynamicResource TextSpeedOverride}" Style="{StaticResource OperationText}"/>
+                                    </DockPanel>
+                                    <Slider Minimum="1" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                                            IsMoveToPointEnabled="True" Margin="0,6,0,6"
+                                            Value="{Binding SpeedPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                                <UniformGrid Grid.Row="2" Rows="1" Columns="5" Margin="0,2,0,0">
+                                    <Button ToolTip="{DynamicResource TextHomeAllAxes}" AutomationProperties.Name="{DynamicResource TextHome}" Style="{StaticResource OperationActionButton}" Background="#E7C64B" Foreground="#25200D" Command="{Binding HomeCommand}">
                                         <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                            <Path Data="M2,11 L12,2 22,11 H19 V22 H14 V15 H10 V22 H5 V11 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                            <TextBlock Text="Home" HorizontalAlignment="Center" />
+                                            <Path Data="M2,11 L12,2 22,11 H19 V22 H14 V15 H10 V22 H5 V11 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource Self}}" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                            <TextBlock Text="{DynamicResource TextHome}" HorizontalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
-                                    <Button ToolTip="Reset Faults" AutomationProperties.Name="Reset" Style="{StaticResource OperationActionButton}" Background="#4B92DE" Foreground="#FFFFFF" IsEnabled="False">
+                                    <Button ToolTip="{DynamicResource TextResetFaults}" AutomationProperties.Name="{DynamicResource TextReset}" Style="{StaticResource OperationActionButton}" Background="#4B92DE" Foreground="#FFFFFF" Command="{Binding ResetCommand}">
                                         <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                            <Path Data="M19,8 V3 L17,5 A8,8 0 1 0 20,15 L17,14 A5,5 0 1 1 15,7 L13,9 H19 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                            <TextBlock Text="Reset" HorizontalAlignment="Center" />
+                                            <Path Data="M19,8 V3 L17,5 A8,8 0 1 0 20,15 L17,14 A5,5 0 1 1 15,7 L13,9 H19 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource Self}}" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                            <TextBlock Text="{DynamicResource TextReset}" HorizontalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
-                                    <Button ToolTip="Run Sequence" AutomationProperties.Name="Run" Style="{StaticResource OperationActionButton}" Background="#45AD78" Foreground="#10291D" IsEnabled="False">
+                                    <Button ToolTip="{DynamicResource TextRunSequence}" AutomationProperties.Name="{DynamicResource TextRun}" Style="{StaticResource OperationActionButton}" Background="#45AD78" Foreground="#10291D" Command="{Binding RunCommand}">
                                         <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                            <Path Data="M5,3 L21,12 5,21 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                            <TextBlock Text="Run" HorizontalAlignment="Center" />
+                                            <Path Data="M5,3 L21,12 5,21 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource Self}}" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                            <TextBlock Text="{DynamicResource TextRun}" HorizontalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
-                                    <Button ToolTip="Pause Sequence" AutomationProperties.Name="Pause" Style="{StaticResource OperationActionButton}" Background="#E79A42" Foreground="#2B1B08" IsEnabled="False">
+                                    <Button ToolTip="{DynamicResource TextPauseSequence}" AutomationProperties.Name="{DynamicResource TextPause}" Style="{StaticResource OperationActionButton}" Background="#E79A42" Foreground="#2B1B08" Command="{Binding PauseCommand}">
                                         <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                            <Path Data="M5,3 H10 V21 H5 Z M14,3 H19 V21 H14 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                            <TextBlock Text="Pause" HorizontalAlignment="Center" />
+                                            <Path Data="M5,3 H10 V21 H5 Z M14,3 H19 V21 H14 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource Self}}" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                            <TextBlock Text="{DynamicResource TextPause}" HorizontalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
-                                    <Button ToolTip="Stop Sequence" AutomationProperties.Name="Stop" Style="{StaticResource OperationActionButton}" Background="#D85B60" Foreground="#FFFFFF" IsEnabled="False">
+                                    <Button ToolTip="{DynamicResource TextStopSequence}" AutomationProperties.Name="{DynamicResource TextStop}" Style="{StaticResource OperationActionButton}" Background="#D85B60" Foreground="#FFFFFF" Command="{Binding StopCommand}">
                                         <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                            <Path Data="M4,4 H20 V20 H4 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                            <TextBlock Text="Stop" HorizontalAlignment="Center" />
+                                            <Path Data="M4,4 H20 V20 H4 Z" Width="20" Height="20" Stretch="Uniform" Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource Self}}" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                            <TextBlock Text="{DynamicResource TextStop}" HorizontalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
                                 </UniformGrid>
-                                <TextBlock Grid.Row="2" Text="Controls unavailable — UI draft" Style="{StaticResource OperationMuted}" Margin="0,12,0,0" TextWrapping="Wrap" />
                             </Grid>
                         </ScrollViewer>
                     </Border>

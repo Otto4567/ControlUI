@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ControlUI.Support.Local.Helpers
+namespace ControlUI.Support.Services
 {
     public class NavigationService
     {

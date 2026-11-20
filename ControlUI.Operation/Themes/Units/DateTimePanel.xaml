@@ -17,14 +17,23 @@
                                     <RowDefinition Height="*" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="Date &amp; Time" Style="{StaticResource OperationHeading}" />
+                                <TextBlock Text="{DynamicResource TextDateTime}" Style="{StaticResource OperationHeading}" />
                                 <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                                    <TextBlock Text="{TemplateBinding DateText}" Foreground="#B9C0CA" FontSize="18" HorizontalAlignment="Center" />
+                                    <TextBlock Text="{TemplateBinding DateText}" Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="18" HorizontalAlignment="Center" />
                                     <Viewbox Height="42" StretchDirection="DownOnly" Margin="0,4,0,0">
                                         <hc:FlipClock />
                                     </Viewbox>
                                 </StackPanel>
-                                <TextBlock Text="Elapsed  —    ·    Last cycle  —" Style="{StaticResource OperationMuted}" Grid.Row="2" Margin="0,12,0,0" HorizontalAlignment="Center" />
+                                <UniformGrid Grid.Row="2" Columns="2" Margin="0,6,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource TextRunElapsed}" Style="{StaticResource OperationMuted}" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding ElapsedTime}" FontFamily="Consolas" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource TextLastCompletedCycle}" Style="{StaticResource OperationMuted}" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding LastCycleTime}" FontFamily="Consolas" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </UniformGrid>
                             </Grid>
                         </ScrollViewer>
                     </Border>

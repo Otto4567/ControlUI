@@ -10,11 +10,9 @@ namespace ControlUI.Support.Local.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            int depth = int.Parse(value.ToString());
-            int left = depth * 10;
-            Thickness thickness = new Thickness(left, 0, 0, 0);
-
-            return thickness;
+            return int.TryParse(value?.ToString(), out int depth)
+                ? new Thickness(depth * 10.0, 0, 0, 0)
+                : DependencyProperty.UnsetValue;
         }
 
         public object ConvertBack(

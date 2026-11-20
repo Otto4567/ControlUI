@@ -1,7 +1,7 @@
 ﻿using Prism.Ioc;
 using Prism.Modularity;
-using ControlUI.Support.Local.Models;
-using ControlUI.Support.Local.Helpers;
+using ControlUI.Support.Services;
+using ControlUI.Motion;
 
 namespace ControlUI.Properties
 {
@@ -9,13 +9,23 @@ namespace ControlUI.Properties
     {
         public void OnInitialized(IContainerProvider containerProvider)
         {
+            var workspace = containerProvider.Resolve<ProjectWorkspace>();
+            System.Windows.Application.Current.Exit += (_, _) => workspace.Save();
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
-            containerRegistry.RegisterSingleton<ColorManager>();
-            containerRegistry.RegisterSingleton<DirectoryManager>();
             containerRegistry.RegisterSingleton<NavigationService>();
+            var app = (App)System.Windows.Application.Current;
+            containerRegistry.RegisterInstance(app.EventLog);
+            containerRegistry.RegisterInstance(app.MotionConfiguration);
+            containerRegistry.RegisterSingleton<ProjectWorkspace>();
+            containerRegistry.RegisterInstance<IUserDialogs>(new WpfUserDialogs());
+            if (app.SimulateMotion)
+                containerRegistry.RegisterInstance<IMotionService>(
+                    new SimulatedMotionService(TimeProvider.System, app.SimulateAlarm, app.MotionConfiguration));
+            else
+                containerRegistry.RegisterSingleton<IMotionService, AjinMotionService>();
         }
     }
 }

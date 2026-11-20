@@ -5,6 +5,19 @@ namespace ControlUI.Operation.Local.Models
     public partial class AxisStatusInfo : ObservableObject
     {
         public string Axis { get; }
+        public int Number { get; }
+        public double MillimetersPerPulse { get; }
+        public double MaxSpeed { get; }
+
+        [ObservableProperty] private double? _commandPosition;
+        [ObservableProperty] private bool? _servoOn;
+        [ObservableProperty] private bool? _alarm;
+        [ObservableProperty] private bool? _moving;
+        [ObservableProperty] private bool? _inPosition;
+        [ObservableProperty] private bool? _homeSignal;
+        [ObservableProperty] private bool? _positiveLimit;
+        [ObservableProperty] private bool? _negativeLimit;
+        [ObservableProperty] private bool? _emergency;
 
         [ObservableProperty]
         private bool? _isConnected;
@@ -15,19 +28,15 @@ namespace ControlUI.Operation.Local.Models
         [ObservableProperty]
         private double? _speed;
 
-        // 현재 이동에 적용된 가속·감속 설정값입니다.
-        [ObservableProperty]
-        private double? _acceleration;
-
-        [ObservableProperty]
-        private double? _deceleration;
-
         [ObservableProperty]
         private bool? _isHomed;
 
-        public AxisStatusInfo(string axis)
+        public AxisStatusInfo(string axis, int number, double millimetersPerPulse, double maxSpeed)
         {
             Axis = axis;
+            Number = number;
+            MillimetersPerPulse = millimetersPerPulse;
+            MaxSpeed = maxSpeed;
         }
     }
 }
