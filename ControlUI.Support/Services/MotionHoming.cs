@@ -18,21 +18,44 @@ public static class MotionHoming
         axisStarted(axis);
         await Task.Run(() => motion.HomeAxis(axis), cancellation);
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
-        while (true)
+        try
         {
-            await Task.Delay(100, cancellation);
-            if (motion.IsOperationStopRequested)
-                throw new OperationCanceledException("Homing was stopped.");
-            var state = await Task.Run(() => motion.ReadAxis(axis), cancellation);
-            if (motion.IsOperationStopRequested)
-                throw new OperationCanceledException("Homing was stopped.");
-            if (!state.ServoOn || state.Alarm || state.Emergency ||
-                (!state.Homed && state.HomeResult != 2))
-                throw new InvalidOperationException($"Axis {axis} homing failed. Result: {state.HomeResult}.");
-            if (!state.Moving && state.Homed)
-                break;
+            while (true)
+            {
+                await Task.Delay(100, cancellation);
+                if (motion.IsOperationStopRequested)
+                    throw new OperationCanceledException("Homing was stopped.");
+                var state = await Task.Run(() => motion.ReadAxis(axis), cancellation);
+                if (motion.IsOperationStopRequested)
+                    throw new OperationCanceledException("Homing was stopped.");
+                if (!state.ServoOn || state.Alarm || state.Emergency ||
+                    (!state.Homed && state.HomeResult != 2))
+                    throw new InvalidOperationException($"Axis {axis} homing failed. Result: {state.HomeResult}.");
+                if (!state.Moving && state.Homed)
+                    break;
+                if (elapsed.Elapsed.TotalSeconds >= timeoutSeconds)
+                    throw new TimeoutException($"Axis {axis} exceeded the home timeout.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            await StopHomingAxisAsync(motion, axis, timeoutSeconds);
+            throw;
+        }
+    }
+
+    private static async Task StopHomingAxisAsync(IMotionService motion, int axis, int timeoutSeconds)
+    {
+        if (!(await Task.Run(() => motion.ReadAxis(axis))).Moving)
+            return;
+
+        await Task.Run(() => motion.StopAxis(axis, abrupt: false));
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        while ((await Task.Run(() => motion.ReadAxis(axis))).Moving)
+        {
             if (elapsed.Elapsed.TotalSeconds >= timeoutSeconds)
-                throw new TimeoutException($"Axis {axis} exceeded the home timeout.");
+                throw new TimeoutException($"Axis {axis} did not stop after homing was canceled.");
+            await Task.Delay(50);
         }
     }
 }
