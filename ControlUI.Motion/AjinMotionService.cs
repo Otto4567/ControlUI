@@ -7,7 +7,8 @@ namespace ControlUI.Motion;
 
 public sealed class AjinMotionService(MotionPreferences configuration) : IMotionService
 {
-    public MotionPreferences Configuration { get; private set; } = configuration;
+    private volatile MotionPreferences _configuration = configuration;
+    public MotionPreferences Configuration => _configuration;
     public event EventHandler<EventArgs>? ConfigurationChanged;
 
     public void ApplyConfiguration(MotionPreferences configuration, Action save)
@@ -27,7 +28,7 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
                     CloseSession();
                 }
                 save();
-                Configuration = configuration;
+                _configuration = configuration;
             }
         }
         catch
@@ -39,7 +40,8 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
         ConfigurationChanged?.Invoke(this, EventArgs.Empty);
     }
     private volatile bool _initialized;
-    // AXM reference does not establish concurrent stop-call safety. Serialize only dispatch and close.
+    // Lock order: _motionLock then Dispatch.Gate. Stop paths take only Dispatch.Gate
+    // and must never call a method that acquires _motionLock.
     public MotionDispatch Dispatch { get; } = new();
     private readonly object _motionLock = new();
     private long _parameterRevision;
@@ -62,7 +64,7 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
             if (!_initialized)
                 return;
             var failures = new List<Exception>();
-            int count = GetAxisCount();
+            int count = ReadAxisCountCore();
             for (int axis = 0; axis < count; axis++)
             {
                 uint result = CAXM.AxmMoveEStop(axis);
@@ -96,13 +98,18 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
         {
             if (!_initialized)
                 return;
-            axes = Enumerable.Range(0, GetAxisCount()).ToArray();
+            axes = Enumerable.Range(0, ReadAxisCountCore()).ToArray();
             if (axes.Length > 0)
                 StopAxes(axes, abrupt: false);
         }
         var timeout = System.Diagnostics.Stopwatch.StartNew();
-        while (axes.Any(IsAxisMoving))
+        while (axes.Length > 0)
         {
+            lock (Dispatch.Gate)
+            {
+                EnsureInitialized();
+                if (!axes.Any(IsAxisMoving)) break;
+            }
             if (timeout.Elapsed >= TimeSpan.FromSeconds(10))
                 throw new TimeoutException("Motion did not stop within ten seconds.");
             Thread.Sleep(50);
@@ -225,21 +232,25 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
 
     public void SaveParameters(string path)
     {
-        if (!_initialized)
-            throw new InvalidOperationException("The motion library is not initialized.");
-
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
-        string fullPath = Path.GetFullPath(path);
-        uint result = CAXM.AxmMotSaveParaAll(fullPath);
-
-        Check(result, nameof(CAXM.AxmMotSaveParaAll));
+        lock (_motionLock)
+        {
+            EnsureInitialized();
+            ArgumentException.ThrowIfNullOrWhiteSpace(path);
+            string fullPath = Path.GetFullPath(path);
+            Check(CAXM.AxmMotSaveParaAll(fullPath), nameof(CAXM.AxmMotSaveParaAll));
+        }
     }
 
     public int GetAxisCount()
     {
-        if (!_initialized)
-            throw new InvalidOperationException("The motion library is not initialized.");
+        lock (_motionLock)
+            return ReadAxisCountCore();
+    }
+
+    // The caller guards the native session with _motionLock or Dispatch.Gate.
+    private int ReadAxisCountCore()
+    {
+        EnsureInitialized();
 
         int axisCount = 0;
         uint result = CAXM.AxmInfoGetAxisCount(ref axisCount);
@@ -604,7 +615,8 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
 
     private void EnsureAxesStopped()
     {
-        for (int axis = 0; axis < GetAxisCount(); axis++)
+        int count = ReadAxisCountCore();
+        for (int axis = 0; axis < count; axis++)
             if (IsAxisMoving(axis))
                 throw new InvalidOperationException($"Axis {axis} is moving.");
     }
