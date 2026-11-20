@@ -46,9 +46,6 @@ public static class MotionHoming
 
     private static async Task StopHomingAxisAsync(IMotionService motion, int axis, int timeoutSeconds)
     {
-        if (!(await Task.Run(() => motion.ReadAxis(axis))).Moving)
-            return;
-
         await Task.Run(() => motion.StopAxis(axis, abrupt: false));
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
         while ((await Task.Run(() => motion.ReadAxis(axis))).Moving)

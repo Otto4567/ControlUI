@@ -178,13 +178,14 @@ public partial class ManualContentViewModel : ObservableBase
     [RelayCommand]
     private Task HomeAllAsync() => RunManualGroupAsync("Homing", () =>
         MotionHoming.RunAsync(_motionService, _motionService.Configuration,
-            axis => MotionStatus = $"Homing {MotionAxes.Single(item => item.AxisNumber == axis).Axis}..."));
+            axis => MotionStatus = $"Homing {MotionAxes.Single(item => item.AxisNumber == axis).Axis}..."),
+        MotionAxes.Select(axis => axis.AxisNumber).ToArray());
 
     [RelayCommand]
     private Task HomeAxisAsync(MotionAxisProfile? axis) =>
         axis is null || !MotionAxes.Contains(axis) ? Task.CompletedTask :
             RunManualGroupAsync("Homing", () => MotionHoming.RunAxisAsync(_motionService, axis.AxisNumber,
-                _motionService.Configuration.HomeTimeoutSeconds, _ => MotionStatus = $"Homing {axis.Axis}..."));
+                _motionService.Configuration.HomeTimeoutSeconds, _ => MotionStatus = $"Homing {axis.Axis}..."), [axis.AxisNumber]);
 
     [RelayCommand]
     private Task ServoOnAllAsync() => SetAllServosAsync(true);
@@ -217,7 +218,7 @@ public partial class ManualContentViewModel : ObservableBase
             ? Task.CompletedTask
             : RunManualGroupAsync($"{axis.Axis} · {action}", () => RunAxisAsync(() => execute(axis.AxisNumber)));
 
-    private async Task RunManualGroupAsync(string name, Func<Task> action)
+    private async Task RunManualGroupAsync(string name, Func<Task> action, int[]? homingAxes = null)
     {
         if (!IsMotionInitialized || !_motionService.IsReady || IsMotionBusy ||
             _pendingAllStops != 0 || MotionAxes.Any(axis => axis.JogHeld || axis.Repeat is not null))
@@ -236,26 +237,23 @@ public partial class ManualContentViewModel : ObservableBase
             MotionStatus = $"{name} complete.";
             _ = WriteMotionLogAsync("Info", MotionStatus);
         }
-        catch (OperationCanceledException) when (_motionService.IsOperationStopRequested)
-        {
-            _allStopRequested = true;
-            MotionStatus = $"{name} stopped.";
-            _ = WriteMotionLogAsync("Warning", MotionStatus);
-        }
         catch (Exception ex)
         {
-            _commandFailed = true;
-            MotionStatus = ex.Message;
-            if (ownsMotion && !_motionService.IsOperationStopRequested && name == "Homing")
+            bool canceled = ex is OperationCanceledException && _motionService.IsOperationStopRequested;
+            string status = canceled ? $"{name} stopped." : ex.Message;
+            if (ownsMotion && homingAxes != null)
             {
-                try
+                try { await Task.Run(() => _motionService.StopAxes(homingAxes, abrupt: false)); }
+                catch (Exception stopError)
                 {
-                    var axes = MotionAxes.Select(axis => axis.AxisNumber).ToArray();
-                    await Task.Run(() => _motionService.StopAxes(axes, false));
+                    canceled = false;
+                    status = $"{ex.Message} Stop failed: {stopError.Message}";
                 }
-                catch (Exception stopError) { MotionStatus += $" Stop failed: {stopError.Message}"; }
             }
-            _ = WriteMotionLogAsync("Error", MotionStatus);
+            _allStopRequested = canceled;
+            _commandFailed = !canceled;
+            MotionStatus = status;
+            _ = WriteMotionLogAsync(canceled ? "Warning" : "Error", status);
         }
         finally
         {
