@@ -149,4 +149,8 @@
     <sys:String x:Key="TextMainStatusStopped">정지됨</sys:String>
     <sys:String x:Key="TextMainStatusCompleted">완료</sys:String>
     <sys:String x:Key="TextMainStatusFault">오류</sys:String>
+    <sys:String x:Key="TextShutdownBlocked">모션 종료 중단</sys:String>
+    <sys:String x:Key="TextForceExitExplanation">축 정지를 확인할 수 없습니다. 강제 종료를 선택하면 비상정지를 시도하며, 정지에 실패해도 프로그램이 종료됩니다.</sys:String>
+    <sys:String x:Key="TextKeepOpen">창 유지</sys:String>
+    <sys:String x:Key="TextForceExit">강제 종료</sys:String>
 </ResourceDictionary>

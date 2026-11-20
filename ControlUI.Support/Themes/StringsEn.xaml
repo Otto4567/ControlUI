@@ -149,4 +149,8 @@
     <sys:String x:Key="TextMainStatusStopped">STOPPED</sys:String>
     <sys:String x:Key="TextMainStatusCompleted">COMPLETED</sys:String>
     <sys:String x:Key="TextMainStatusFault">FAULT</sys:String>
+    <sys:String x:Key="TextShutdownBlocked">Motion shutdown blocked</sys:String>
+    <sys:String x:Key="TextForceExitExplanation">Axis standstill could not be confirmed. Force Exit attempts an emergency stop and closes ControlUI even if the stop fails.</sys:String>
+    <sys:String x:Key="TextKeepOpen">Keep Open</sys:String>
+    <sys:String x:Key="TextForceExit">Force Exit</sys:String>
 </ResourceDictionary>

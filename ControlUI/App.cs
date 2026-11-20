@@ -62,15 +62,27 @@ namespace ControlUI
             catch (Exception logError) { System.Diagnostics.Trace.TraceError("{0}", logError); }
         }
 
+        private async Task LogShutdownAsync(string level, string message)
+        {
+            try { await EventLog.WriteAsync(level, "Motion", message); }
+            catch (Exception error) { System.Diagnostics.Trace.TraceError("{0}; log failed: {1}", message, error); }
+        }
+
         protected override Window CreateShell()
         {
             var shell = new ShellWindow();
             if (SimulateMotion)
                 shell.Title = "ControlUI — Motion Simulation";
             EventLog.RecordLifecycle(SimulateMotion ? "ControlUI started in motion simulation." : "ControlUI started.");
+            bool forceExit = false;
             Exit += (_, args) =>
             {
                 try { MotionService?.Dispose(); }
+                catch (Exception disposeError) when (forceExit)
+                {
+                    try { EventLog.RecordFailure("Forced shutdown cleanup", disposeError); }
+                    catch (Exception logError) { System.Diagnostics.Trace.TraceError("{0}; log failed: {1}", disposeError, logError); }
+                }
                 finally
                 {
                     AppDomain.CurrentDomain.UnhandledException -= OnDomainFailure;
@@ -80,10 +92,10 @@ namespace ControlUI
                 }
             };
             bool closing = false;
-            bool stopped = false;
+            bool exitApproved = false;
             shell.Closing += async (_, args) =>
             {
-                if (stopped || MotionService is not { } motion)
+                if (exitApproved || MotionService is not { } motion)
                     return;
 
                 args.Cancel = true;
@@ -94,20 +106,32 @@ namespace ControlUI
                 try
                 {
                     await Task.Run(motion.StopForShutdown);
-                    stopped = true;
-                    // Queue the second Close after WPF processes the canceled Closing event.
-                    _ = shell.Dispatcher.InvokeAsync(shell.Close);
                 }
                 catch (Exception ex)
                 {
-                    await EventLog.WriteAsync("Error", "Motion", $"Shutdown blocked: {ex.Message}");
-                    MessageBox.Show(shell, ex.Message, "Motion shutdown blocked",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    await LogShutdownAsync("Error", $"Shutdown blocked: {ex}");
+                    var dialog = new ShutdownBlockedDialog(shell, ex.Message);
+                    if (dialog.ShowDialog() != true)
+                    {
+                        closing = false;
+                        return;
+                    }
+
+                    forceExit = true;
+                    try
+                    {
+                        await Task.Run(motion.StopForUnhandledException);
+                        await LogShutdownAsync("Warning", "Forced exit requested. E-stop command returned; standstill unconfirmed.");
+                    }
+                    catch (Exception stopError)
+                    {
+                        await LogShutdownAsync("Error", $"Forced exit requested. E-stop failed: {stopError}");
+                    }
                 }
-                finally
-                {
-                    closing = false;
-                }
+
+                exitApproved = true;
+                // WPF must finish processing the canceled Closing event before a second Close.
+                _ = shell.Dispatcher.InvokeAsync(shell.Close);
             };
             return shell;
         }
