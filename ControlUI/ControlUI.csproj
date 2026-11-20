@@ -2,11 +2,28 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net11.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HandyControl" Version="3.5.1" />
+    <PackageReference Include="Jamesnet.Wpf" Version="1.0.0.113" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ControlUI.Forms\ControlUI.Forms.csproj" />
+    <ProjectReference Include="..\ControlUI.Location\ControlUI.Location.csproj" />
+    <ProjectReference Include="..\ControlUI.Main\ControlUI.Main.csproj" />
+    <ProjectReference Include="..\ControlUI.Manual\ControlUI.Manual.csproj" />
+    <ProjectReference Include="..\ControlUI.Motion\ControlUI.Motion.csproj" />
+    <ProjectReference Include="..\ControlUI.Operation\ControlUI.Operation.csproj" />
+    <ProjectReference Include="..\ControlUI.Sequence\ControlUI.Sequence.csproj" />
+    <ProjectReference Include="..\ControlUI.Settings\ControlUI.Settings.csproj" />
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="copy /Y &quot;$(ProjectDir)..\ControlUI.Motion\Native\x64\AXL.dll&quot; &quot;$(TargetDir)AXL.dll&quot;&#xA;if errorlevel 1 exit /b 1&#xD;&#xA;&#xA;copy /Y &quot;$(ProjectDir)..\ControlUI.Motion\Native\x64\EzBasicAxl.dll&quot; &quot;$(TargetDir)EzBasicAxl.dll&quot;&#xA;if errorlevel 1 exit /b 1&#xD;&#xA;&#xD;&#xA;if not exist &quot;$(TargetDir)Config&quot; mkdir &quot;$(TargetDir)Config&quot;&#xA;if errorlevel 1 exit /b 1&#xA;&#xA;copy /Y &quot;$(ProjectDir)Config\motion.mot&quot; &quot;$(TargetDir)Config\motion.mot&quot;&#xA;if errorlevel 1 exit /b 1" />
+  </Target>
 
 </Project>

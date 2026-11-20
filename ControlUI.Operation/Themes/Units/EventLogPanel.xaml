@@ -1,0 +1,88 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:units="clr-namespace:ControlUI.Operation.UI.Units">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/OperationStyles.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+    <Style TargetType="{x:Type units:EventLogPanel}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type units:EventLogPanel}">
+                    <Border Style="{StaticResource OperationCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <DockPanel Margin="0,0,0,4">
+                                <Button DockPanel.Dock="Right" Content="{DynamicResource TextClearEventLog}"
+                                        Command="{Binding ClearEventsCommand}" Padding="12,4"/>
+                                <TextBlock Text="{DynamicResource TextEventLog}" Style="{StaticResource OperationHeading}"
+                                           VerticalAlignment="Center" Margin="0"/>
+                            </DockPanel>
+                            <DataGrid Grid.Row="1" ItemsSource="{Binding Events}"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" CanUserDeleteRows="False"
+                                      HeadersVisibility="Column" RowHeight="22" ColumnHeaderHeight="24"
+                                      Foreground="{DynamicResource PrimaryForegroundBrush}"
+                                      Background="{DynamicResource CardBackgroundBrush}"
+                                      RowBackground="{DynamicResource CardBackgroundBrush}"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <DataGrid.ColumnHeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="DataGridColumnHeader">
+                                                    <Border Padding="6,2" Background="{DynamicResource CardBackgroundBrush}"
+                                                            BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                                                        <ContentPresenter TextElement.Foreground="{DynamicResource PrimaryForegroundBrush}"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </DataGrid.ColumnHeaderStyle>
+                                <DataGrid.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="DataGridCell">
+                                                    <Border x:Name="CellSurface" Background="Transparent" Padding="6,0">
+                                                        <ContentPresenter VerticalAlignment="Center"
+                                                                          TextElement.Foreground="{DynamicResource PrimaryForegroundBrush}"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="CellSurface" Property="Background"
+                                                                    Value="{DynamicResource SelectedBackgroundBrush}"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </DataGrid.CellStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Width="120" Binding="{Binding LocalTime}"><DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextTime}"/></DataGridTextColumn.Header></DataGridTextColumn>
+                                    <DataGridTextColumn Width="76" Binding="{Binding Level}"><DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextLevel}"/></DataGridTextColumn.Header></DataGridTextColumn>
+                                    <DataGridTextColumn Width="90" Binding="{Binding Source}"><DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextSource}"/></DataGridTextColumn.Header></DataGridTextColumn>
+                                    <DataGridTextColumn Width="*" MinWidth="160" Binding="{Binding Message}"><DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextMessage}"/></DataGridTextColumn.Header>
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                <Setter Property="ToolTip" Value="{Binding Message}"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBlock Grid.Row="2" Text="{Binding Events.Count, StringFormat={}{0} events shown}"
+                                       Style="{StaticResource OperationMuted}" Margin="0,4,0,0"/>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

@@ -1,9 +1,48 @@
 <Solution>
   <Configurations>
-    <Platform Name="Any CPU" />
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="ControlUI.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
+  <Folder Name="/App/">
+    <Project Path="../ControlUI.Forms/ControlUI.Forms.csproj" Id="27ea00fc-fe48-4b48-a54e-5f5e241d25cd">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="ControlUI.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/Common/">
+    <Project Path="../ControlUI.Motion/ControlUI.Motion.csproj" Id="7f22b64f-47b4-4808-9679-f98b69bc741b">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../ControlUI.Support/ControlUI.Support.csproj" Id="451b3b4e-af11-45c2-bd01-da75e9b3763b">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/Features/">
+    <Project Path="../ControlUI.Manual/ControlUI.Manual.csproj" Id="b180c730-0755-42ac-8ac6-e752c2605cfb">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../ControlUI.Operation/ControlUI.Operation.csproj" Id="21b0c897-a449-4cb8-aa29-d6d3e40d8114">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../ControlUI.Sequence/ControlUI.Sequence.csproj" Id="04d9e670-4f1f-480d-a9d5-b2d6518d254a">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../ControlUI.Settings/ControlUI.Settings.csproj" Id="690f7a01-4e93-45db-a884-1654c481f5e9">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/Shell/">
+    <Project Path="../ControlUI.Location/ControlUI.Location.csproj" Id="8f2666c3-250f-4590-96d3-6ce175585211">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../ControlUI.Main/ControlUI.Main.csproj" Id="73b08435-0a68-4212-b4a4-e41ddcad9983">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="../ControlUI.Tests/ControlUI.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
 </Solution>

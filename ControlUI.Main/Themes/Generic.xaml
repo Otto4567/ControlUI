@@ -1,0 +1,17 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/ExpandButton.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/PolygonSelectorItem.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/PolygonSelector.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/FileListItem.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/FileListBox.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/FolderTreeItem.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/FolderTreeView.xaml"/>
+
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/SideBarItem.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Units/SideBarView.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Main;component/Themes/Views/MainContent.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+</ResourceDictionary>

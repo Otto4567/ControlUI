@@ -1,0 +1,62 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="clr-namespace:ControlUI.Operation.UI.Views"
+    xmlns:units="clr-namespace:ControlUI.Operation.UI.Units">
+
+    <Style TargetType="{x:Type views:OperationContentView}">
+        <Setter Property="Background" Value="{DynamicResource PageBackgroundBrush}"/>
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type views:OperationContentView}">
+                    <Border Background="{TemplateBinding Background}">
+                        <Grid Margin="12" ClipToBounds="True" UseLayoutRounding="True">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2.25*"/>
+                                <ColumnDefinition Width="0.75*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <units:DeviceStatusPanel Grid.Row="0" Grid.Column="0" Margin="0,0,6,8"/>
+                            <units:DateTimePanel Grid.Row="0" Grid.Column="1" Margin="6,0,6,8"/>
+                            <units:SystemStatusPanel Grid.Row="0" Grid.Column="2" Margin="6,0,0,8"/>
+                            <units:SequencePanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,0,0,8"/>
+                            <units:EventLogPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,6,0"/>
+                            <units:OperationControlPanel Grid.Row="2" Grid.Column="2" Margin="6,0,0,0"/>
+                            <Button Grid.RowSpan="3" Grid.ColumnSpan="3" Panel.ZIndex="10"
+                                    Content="{Binding RunFeedback}" Command="{Binding DismissRunFeedbackCommand}"
+                                    AutomationProperties.Name="{Binding RunFeedback}">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding RunFeedback}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Grid Background="#33000000">
+                                            <Border Background="#942C38" VerticalAlignment="Center" Padding="24,16">
+                                                <TextBlock Text="{TemplateBinding Content}" Foreground="White" FontSize="16"
+                                                           FontWeight="SemiBold" MaxWidth="820" TextAlignment="Center" TextWrapping="Wrap"/>
+                                            </Border>
+                                        </Grid>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

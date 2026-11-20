@@ -75,3 +75,7 @@ Testing/
 # .NET build outputs
 [Bb]in/
 [Oo]bj/
+
+# AJIN x64 runtime dependencies
+!/ControlUI.Motion/Native/x64/AXL.dll
+!/ControlUI.Motion/Native/x64/EzBasicAxl.dll

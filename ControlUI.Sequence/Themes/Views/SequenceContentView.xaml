@@ -1,0 +1,200 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:hc="https://handyorg.github.io/handycontrol"
+    xmlns:models="clr-namespace:ControlUI.Support.Local.Models;assembly=ControlUI.Support"
+    xmlns:views="clr-namespace:ControlUI.Sequence.UI.Views">
+    <BooleanToVisibilityConverter x:Key="MultiAxisVisibility"/>
+    <Style x:Key="StepValueText" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="8,0"/>
+    </Style>
+    <Style x:Key="MoveCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Item.IsMove, RelativeSource={RelativeSource AncestorType=DataGridRow}}" Value="False">
+                <Setter Property="IsEnabled" Value="False"/>
+                <Setter Property="Opacity" Value="0.35"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="WaitCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Item.IsWait, RelativeSource={RelativeSource AncestorType=DataGridRow}}" Value="False">
+                <Setter Property="IsEnabled" Value="False"/>
+                <Setter Property="Opacity" Value="0.35"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style TargetType="{x:Type views:SequenceContentView}">
+        <Setter Property="Background" Value="{DynamicResource PageBackgroundBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type views:SequenceContentView}">
+                    <Border Background="{TemplateBinding Background}" Padding="16">
+                        <Grid TextElement.Foreground="{DynamicResource PrimaryForegroundBrush}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="220"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <WrapPanel Grid.ColumnSpan="2" Margin="0,0,0,8">
+                                <Button Content="{DynamicResource TextNewProject}" Command="{Binding NewSequenceCommand}" Margin="0,0,6,6" Padding="10,4"/>
+                                <Button Content="{DynamicResource TextLoadFile}" Command="{Binding LoadSequenceCommand}" Margin="0,0,6,6" Padding="10,4"/>
+                                <Button Content="{DynamicResource TextLoadFolder}" Command="{Binding LoadFolderCommand}" Margin="0,0,6,6" Padding="10,4"/>
+                                <Button Content="{DynamicResource TextSaveSelected}" Command="{Binding SaveSequenceCommand}" Margin="0,0,6,6" Padding="10,4"/>
+                                <Button Content="{DynamicResource TextSaveAll}" Command="{Binding SaveAllCommand}" Margin="0,0,6,6" Padding="10,4"/>
+                            </WrapPanel>
+                            <Grid Grid.Row="1" Margin="0,0,12,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <DockPanel Margin="0,0,0,12">
+                                    <TextBlock DockPanel.Dock="Top" Text="{DynamicResource TextProjects}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <Button DockPanel.Dock="Bottom" Content="{DynamicResource TextRemoveFromList}"
+                                            Command="{Binding RemoveSequenceCommand}" Margin="0,8,0,0"/>
+                                    <ListBox ItemsSource="{Binding Sequences}" DisplayMemberPath="Name"
+                                             SelectedItem="{Binding SelectedSequence}"/>
+                                </DockPanel>
+                                <DockPanel Grid.Row="1">
+                                    <TextBlock DockPanel.Dock="Top" Text="{DynamicResource TextPages}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                                        <Button Content="{DynamicResource TextAddPage}" Command="{Binding AddPageCommand}" Margin="0,0,6,6"/>
+                                        <Button Content="{DynamicResource TextRemovePage}" Command="{Binding RemovePageCommand}" Margin="0,0,6,6"/>
+                                        <Button Content="↑" ToolTip="{DynamicResource TextMovePageUp}" Command="{Binding MovePageUpCommand}" Margin="0,0,6,0"/>
+                                        <Button Content="↓" ToolTip="{DynamicResource TextMovePageDown}" Command="{Binding MovePageDownCommand}"/>
+                                    </WrapPanel>
+                                    <ListBox ItemsSource="{Binding SelectedSequence.Pages}" DisplayMemberPath="Name"
+                                             SelectedItem="{Binding SelectedPage}"/>
+                                </DockPanel>
+                            </Grid>
+                            <DockPanel Grid.Row="1" Grid.Column="1">
+                                <StackPanel DockPanel.Dock="Top">
+                                    <WrapPanel>
+                                        <StackPanel Width="200" Margin="0,0,12,8">
+                                            <TextBlock Text="{DynamicResource TextProjectName}" Margin="0,0,0,4"/>
+                                            <TextBox Text="{Binding SelectedSequence.Name, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                        <StackPanel Width="200" Margin="0,0,0,8">
+                                            <TextBlock Text="{DynamicResource TextPageName}" Margin="0,0,0,4"/>
+                                            <TextBox Text="{Binding SelectedPage.Name, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                        <StackPanel Width="155" Margin="12,0,0,8">
+                                            <TextBlock Text="{DynamicResource TextRunMode}" Margin="0,0,0,4"/>
+                                            <ComboBox SelectedValuePath="Tag"
+                                                      SelectedValue="{Binding SelectedSequence.RunMode, Mode=TwoWay}">
+                                                <ComboBoxItem Content="{DynamicResource TextRunOnce}" Tag="{x:Static models:ProjectRunMode.Once}"/>
+                                                <ComboBoxItem Content="{DynamicResource TextRunRepeat}" Tag="{x:Static models:ProjectRunMode.Repeat}"/>
+                                                <ComboBoxItem Content="{DynamicResource TextRunContinuous}" Tag="{x:Static models:ProjectRunMode.Continuous}"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Width="110" Margin="12,0,0,8">
+                                            <TextBlock Text="{DynamicResource TextRepeatCount}" Margin="0,0,0,4"/>
+                                            <hc:NumericUpDown Minimum="1" Maximum="2147483647" Increment="1"
+                                                              IsEnabled="{Binding SelectedSequence.IsRepeatMode, FallbackValue=False}"
+                                                              Value="{Binding SelectedSequence.RepeatCount, Mode=TwoWay}"/>
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <Button Content="{DynamicResource TextAddStep}" Command="{Binding AddStepCommand}" Margin="0,0,6,6" Padding="10,4"/>
+                                        <Button Content="{DynamicResource TextMoveUp}" Command="{Binding MoveUpCommand}" Margin="0,0,6,6" Padding="10,4"/>
+                                        <Button Content="{DynamicResource TextMoveDown}" Command="{Binding MoveDownCommand}" Margin="0,0,6,6" Padding="10,4"/>
+                                        <Button Content="{DynamicResource TextRemoveStep}" Command="{Binding RemoveStepCommand}" Margin="0,0,6,6" Padding="10,4"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                                <Border DockPanel.Dock="Bottom" Margin="0,8,0,0" Padding="8"
+                                        Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                                        BorderThickness="1" CornerRadius="4" DataContext="{Binding SelectedStep}"
+                                        Visibility="{Binding IsMultiAxisMove, Converter={StaticResource MultiAxisVisibility}, FallbackValue=Collapsed}">
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource TextMultiAxisMove}" FontWeight="SemiBold" Margin="4,0,0,6"/>
+                                        <DataGrid ItemsSource="{Binding DataContext.SelectedAxisTargets, RelativeSource={RelativeSource AncestorType={x:Type views:SequenceContentView}}}"
+                                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserSortColumns="False"
+                                                  HeadersVisibility="Column" MaxHeight="186" RowHeight="27">
+                                            <DataGrid.Columns>
+                                                <DataGridTemplateColumn Width="56" IsReadOnly="True">
+                                                    <DataGridTemplateColumn.Header><TextBlock Text="{DynamicResource TextEnabled}"/></DataGridTemplateColumn.Header>
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate><CheckBox IsChecked="{Binding Target.IsEnabled, Mode=TwoWay}" HorizontalAlignment="Center"/></DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTextColumn Width="100" Binding="{Binding Name}" IsReadOnly="True"/>
+                                                <DataGridTextColumn Width="*" Binding="{Binding Target.PositionMm, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}">
+                                                    <DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextPositionMm}"/></DataGridTextColumn.Header>
+                                                </DataGridTextColumn>
+                                                <DataGridTextColumn Width="*" Binding="{Binding Target.VelocityMmPerSecond, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}">
+                                                    <DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextSpeedMmS}"/></DataGridTextColumn.Header>
+                                                </DataGridTextColumn>
+                                                <DataGridTextColumn Width="*" Binding="{Binding Target.AccelMmPerSecondSquared, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}">
+                                                    <DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextAccelRate}"/></DataGridTextColumn.Header>
+                                                </DataGridTextColumn>
+                                                <DataGridTextColumn Width="*" Binding="{Binding Target.DecelMmPerSecondSquared, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}">
+                                                    <DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextDecelRate}"/></DataGridTextColumn.Header>
+                                                </DataGridTextColumn>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </StackPanel>
+                                </Border>
+                                <DataGrid ItemsSource="{Binding SelectedPage.Steps}" SelectedItem="{Binding SelectedStep}"
+                                          AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                          CanUserSortColumns="False" CanUserReorderColumns="False"
+                                          SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="All"
+                                          HorizontalGridLinesBrush="{DynamicResource TableGridLineBrush}" VerticalGridLinesBrush="{DynamicResource TableGridLineBrush}"
+                                          MinRowHeight="44" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="#" Width="48" IsReadOnly="True"
+                                                            ElementStyle="{StaticResource StepValueText}"
+                                                            Binding="{Binding StepNumber, Mode=OneWay}"/>
+                                        <DataGridTemplateColumn Width="1.4*" MinWidth="150" IsReadOnly="True"><DataGridTemplateColumn.Header><TextBlock Text="{DynamicResource TextAction}"/></DataGridTemplateColumn.Header>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding Action, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                              IsSynchronizedWithCurrentItem="False"
+                                                              Margin="4,2" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+                                                        <ComboBoxItem Content="{DynamicResource TextMove}" Tag="{x:Static models:StepAction.Move}"/>
+                                                        <ComboBoxItem Content="{DynamicResource TextWait}" Tag="{x:Static models:StepAction.Wait}"/>
+                                                        <ComboBoxItem Content="{DynamicResource TextMultiAxisMove}" Tag="{x:Static models:StepAction.MultiAxisMove}"/>
+                                                    </ComboBox>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Width="*" MinWidth="100" IsReadOnly="True"><DataGridTemplateColumn.Header><TextBlock Text="{DynamicResource TextAxis}"/></DataGridTemplateColumn.Header>
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox ItemsSource="{Binding DataContext.AxisOptions, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                              SelectedItem="{Binding Axis, Mode=TwoWay}" Margin="4,2" VerticalAlignment="Center" HorizontalAlignment="Stretch" IsEnabled="{Binding IsMove}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Width="*" MinWidth="110" ElementStyle="{StaticResource StepValueText}"
+                                                            CellStyle="{StaticResource MoveCell}"
+                                                            Binding="{Binding PositionMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"><DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextPositionMm}"/></DataGridTextColumn.Header></DataGridTextColumn>
+                                        <DataGridTextColumn Width="*" MinWidth="110" ElementStyle="{StaticResource StepValueText}"
+                                                            CellStyle="{StaticResource MoveCell}"
+                                                            Binding="{Binding VelocityMmPerSecond, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"><DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextSpeedMmS}"/></DataGridTextColumn.Header></DataGridTextColumn>
+                                        <DataGridTextColumn Width="*" MinWidth="110" ElementStyle="{StaticResource StepValueText}"
+                                                            CellStyle="{StaticResource MoveCell}"
+                                                            Binding="{Binding AccelMmPerSecondSquared, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"><DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextAccelRate}"/></DataGridTextColumn.Header></DataGridTextColumn>
+                                        <DataGridTextColumn Width="*" MinWidth="110" ElementStyle="{StaticResource StepValueText}"
+                                                            CellStyle="{StaticResource MoveCell}"
+                                                            Binding="{Binding DecelMmPerSecondSquared, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"><DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextDecelRate}"/></DataGridTextColumn.Header></DataGridTextColumn>
+                                        <DataGridTextColumn Width="*" MinWidth="110" ElementStyle="{StaticResource StepValueText}"
+                                                            CellStyle="{StaticResource WaitCell}"
+                                                            Binding="{Binding WaitMilliseconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"><DataGridTextColumn.Header><TextBlock Text="{DynamicResource TextWaitMs}"/></DataGridTextColumn.Header></DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding Status}"
+                                       TextWrapping="Wrap" Margin="0,12,0,0" Foreground="{DynamicResource SecondaryForegroundBrush}"/>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

@@ -1,0 +1,14 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/Units/DeviceStatusPanel.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/Units/DateTimePanel.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/Units/SystemStatusPanel.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/Units/SequencePanel.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/Units/EventLogPanel.xaml"/>
+        <ResourceDictionary Source="/ControlUI.Operation;component/Themes/Units/OperationControlPanel.xaml"/>
+        <ResourceDictionary
+            Source="/ControlUI.Operation;component/Themes/Views/OperationContentView.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+</ResourceDictionary>
