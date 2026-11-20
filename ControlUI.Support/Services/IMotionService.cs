@@ -72,4 +72,7 @@ public sealed record MotionAxisState(
 {
     public uint HomeResult { get; init; }
     public ushort? AlarmCode { get; init; }
+
+    public bool IsLimitBlocking(double direction) =>
+        (direction > 0 && PositiveLimit) || (direction < 0 && NegativeLimit);
 }

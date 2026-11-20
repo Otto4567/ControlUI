@@ -425,13 +425,23 @@ namespace ControlUI.Operation.Local.ViewModels
                         else
                         {
                             var moves = step.Moves.Select(move => move with { Speed = move.Speed * speedFactor }).ToArray();
-                            var targets = moves.Select(move =>
+                            var axisTargets = moves.Select(move =>
                                 (Axes.Single(axis => axis.Number == move.Axis), move.Position)).ToArray();
                             int[] moveAxes = moves.Select(move => move.Axis).ToArray();
                             while (true)
                             {
                                 await WaitWhilePausedAsync(token);
-                                await AccessMotionAsync(() => _motion.MoveOperationAxes(moves), token);
+                                var targets = await AccessMotionAsync(() =>
+                                {
+                                    var monitored = axisTargets.Select(item =>
+                                    {
+                                        var (axis, target) = item;
+                                        var (state, scale) = ReadAxis(axis);
+                                        return (Axis: axis, Target: target, Direction: target - state.CommandPosition * scale);
+                                    }).ToArray();
+                                    _motion.MoveOperationAxes(moves);
+                                    return monitored;
+                                }, token);
                                 if (await WaitForAxesAsync(targets, token))
                                     break;
 
@@ -505,7 +515,7 @@ namespace ControlUI.Operation.Local.ViewModels
             _stepClock?.Start();
         }
 
-        private async Task<bool> WaitForAxesAsync((AxisStatusInfo Axis, double Target)[] axes,
+        private async Task<bool> WaitForAxesAsync((AxisStatusInfo Axis, double Target, double Direction)[] axes,
             CancellationToken token, bool settlingPause = false)
         {
             var elapsed = System.Diagnostics.Stopwatch.StartNew();
@@ -517,11 +527,11 @@ namespace ControlUI.Operation.Local.ViewModels
                     return false;
                 await Task.Delay(25, token);
                 bool complete = true;
-                foreach (var (axis, target) in axes)
+                foreach (var (axis, target, direction) in axes)
                 {
                     var (state, scale) = await AccessMotionAsync(() => ReadAxis(axis), token);
                     if (!state.ServoOn || state.Alarm || state.Emergency ||
-                        state.PositiveLimit || state.NegativeLimit)
+                        state.IsLimitBlocking(direction))
                         throw new InvalidOperationException($"Axis {axis.Axis} fault during motion.");
 
                     complete &= !state.Moving && (settlingPause ||

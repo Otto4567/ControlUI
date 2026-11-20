@@ -506,13 +506,16 @@ public partial class ManualContentViewModel : ObservableBase
         async Task MoveAndWaitAsync(double position)
         {
             cancellation.Token.ThrowIfCancellationRequested();
+            var before = await OnMotionThreadAsync(() => _motionService.ReadAxis(axis.AxisNumber));
+            double direction = position - before.CommandPosition * axis.MillimetersPerNativeUnit;
+            cancellation.Token.ThrowIfCancellationRequested();
             await move(position, false);
             var elapsed = System.Diagnostics.Stopwatch.StartNew();
             do
             {
                 await Task.Delay(100, cancellation.Token);
                 var state = await OnMotionThreadAsync(() => _motionService.ReadAxis(axis.AxisNumber));
-                if (state.Alarm || state.Emergency || state.PositiveLimit || state.NegativeLimit || !state.ServoOn)
+                if (state.Alarm || state.Emergency || state.IsLimitBlocking(direction) || !state.ServoOn)
                     throw new InvalidOperationException("Axis fault during repeat.");
                 if (!state.Moving && state.InPosition &&
                     Math.Abs(state.ActualPosition * axis.MillimetersPerNativeUnit - position) <= axis.MicrometersPerPulse / 1000)

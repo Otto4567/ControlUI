@@ -39,11 +39,10 @@ public sealed class ProjectWorkspace
                 return;
 
             var snapshot = JsonSerializer.Deserialize<Snapshot>(File.ReadAllText(FilePath), JsonOptions);
-            if (snapshot?.Projects is not { } projects ||
-                projects.Any(project => project is null || project.Pages is null ||
-                    project.Pages.Any(page => page is null || page.Steps is null ||
-                        page.Steps.Any(step => step is null))))
+            if (snapshot?.Projects is not { } projects)
                 throw new JsonException("Invalid workspace.");
+            foreach (var project in projects)
+                ValidateRecipe(project);
 
             Previous = snapshot;
             foreach (var project in projects)
@@ -53,6 +52,23 @@ public sealed class ProjectWorkspace
         {
             RestoreError = ex.Message;
         }
+    }
+
+    public static void ValidateRecipe(SequenceRecipe? recipe)
+    {
+        if (recipe is null || recipe.Id == Guid.Empty || recipe.Pages is null ||
+            string.IsNullOrWhiteSpace(recipe.Name))
+            throw new JsonException("Invalid sequence project.");
+
+        if (recipe.Pages.Count == 0 && recipe.LegacySteps is { } legacySteps)
+            recipe.Pages.Add(new SequencePage { Steps = legacySteps });
+
+        if (recipe.Pages.Any(page => page is null || page.Steps is null ||
+            page.Steps.Any(step => step is null || step.AxisTargets is null ||
+                step.AxisTargets.Values.Any(target => target is null))))
+            throw new JsonException("Invalid project page, step or axis targets.");
+
+        recipe.LegacySteps = null;
     }
 
     public void TrackSelection(SequenceRecipe? project, SequencePage? page, SequenceStep? step)

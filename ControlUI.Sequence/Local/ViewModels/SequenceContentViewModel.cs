@@ -322,19 +322,9 @@ public partial class SequenceContentViewModel : ObservableBase
         {
             try
             {
-                var recipe = JsonSerializer.Deserialize<SequenceRecipe>(File.ReadAllText(path), JsonOptions);
-                if (recipe is null || recipe.Id == Guid.Empty || recipe.Pages is null ||
-                    string.IsNullOrWhiteSpace(recipe.Name))
-                    throw new JsonException("Invalid sequence file.");
-
-                if (recipe.Pages.Count == 0 && recipe.LegacySteps is { } legacySteps)
-                    recipe.Pages.Add(new SequencePage { Steps = legacySteps });
-
-                if (recipe.Pages.Any(page => page is null || page.Steps is null ||
-                    page.Steps.Any(step => step is null)))
-                    throw new JsonException("Invalid project page or step.");
-
-                recipe.LegacySteps = null;
+                var recipe = JsonSerializer.Deserialize<SequenceRecipe>(File.ReadAllText(path), JsonOptions)
+                    ?? throw new JsonException("Invalid sequence file.");
+                ProjectWorkspace.ValidateRecipe(recipe);
 
                 if (Sequences.Any(existing => existing.Id == recipe.Id))
                 {
