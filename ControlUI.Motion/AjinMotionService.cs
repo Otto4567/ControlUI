@@ -45,11 +45,43 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
     private volatile bool _operationStopRequested;
     public bool IsOperationStopRequested => _operationStopRequested;
 
+    private bool _shuttingDown;
+
+    public void StopForShutdown()
+    {
+        lock (_motionLock)
+        {
+            _shuttingDown = true;
+            _operationStopRequested = true;
+            if (!_initialized)
+                return;
+
+            int[] axes = Enumerable.Range(0, GetAxisCount()).ToArray();
+            if (axes.Length > 0)
+                StopAxes(axes, abrupt: false);
+
+            var timeout = System.Diagnostics.Stopwatch.StartNew();
+            while (axes.Any(IsAxisMoving))
+            {
+                if (timeout.Elapsed >= TimeSpan.FromSeconds(10))
+                    throw new TimeoutException("Motion did not stop within ten seconds.");
+                System.Threading.Thread.Sleep(50);
+            }
+        }
+    }
+
+    private static bool IsAxisMoving(int axis)
+    {
+        uint moving = 0;
+        Check(CAXM.AxmStatusReadInMotion(axis, ref moving), nameof(CAXM.AxmStatusReadInMotion), axis);
+        return moving != 0;
+    }
+
     public void BeginOperation()
     {
         lock (_motionLock)
         {
-            if (!IsReady || IsOperationActive)
+            if (_shuttingDown || !IsReady || IsOperationActive)
                 throw new InvalidOperationException("Motion is unavailable.");
             EnsureAxesStopped();
             _operationStopRequested = false;
@@ -81,6 +113,16 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
     }
 
     public void Initialize()
+    {
+        lock (_motionLock)
+        {
+            if (_shuttingDown)
+                throw new InvalidOperationException("Motion is shutting down.");
+            InitializeCore();
+        }
+    }
+
+    private void InitializeCore()
     {
         if (_initialized)
             return;
@@ -501,8 +543,8 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
 
     private void EnsureManualAvailable()
     {
-        if (IsOperationActive)
-            throw new InvalidOperationException("Operation currently controls the axes.");
+        if (_shuttingDown || IsOperationActive)
+            throw new InvalidOperationException("Manual motion is unavailable.");
     }
 
     private void EnsureOperationCanMove()
@@ -520,12 +562,8 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
     private void EnsureAxesStopped()
     {
         for (int axis = 0; axis < GetAxisCount(); axis++)
-        {
-            uint moving = 0;
-            Check(CAXM.AxmStatusReadInMotion(axis, ref moving), nameof(CAXM.AxmStatusReadInMotion), axis);
-            if (moving != 0)
+            if (IsAxisMoving(axis))
                 throw new InvalidOperationException($"Axis {axis} is moving.");
-        }
     }
 
     public void StopAxis(int axisNumber, bool abrupt)

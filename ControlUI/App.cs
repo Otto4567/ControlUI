@@ -13,6 +13,7 @@ namespace ControlUI
         internal bool SimulateMotion { get; }
         internal bool SimulateAlarm { get; }
         internal MotionPreferences MotionConfiguration { get; }
+        internal IMotionService? MotionService { get; set; }
 
         public App(bool simulateMotion, bool simulateAlarm)
         {
@@ -40,6 +41,36 @@ namespace ControlUI
             EventLog.RecordLifecycle(SimulateMotion ? "ControlUI started in motion simulation." : "ControlUI started.");
             Exit += (_, args) =>
                 EventLog.RecordLifecycle($"ControlUI exited. Exit code: {args.ApplicationExitCode}.");
+            bool closing = false;
+            bool stopped = false;
+            shell.Closing += async (_, args) =>
+            {
+                if (stopped || MotionService is not { } motion)
+                    return;
+
+                args.Cancel = true;
+                if (closing)
+                    return;
+
+                closing = true;
+                try
+                {
+                    await Task.Run(motion.StopForShutdown);
+                    stopped = true;
+                    // Queue the second Close after WPF processes the canceled Closing event.
+                    _ = shell.Dispatcher.InvokeAsync(shell.Close);
+                }
+                catch (Exception ex)
+                {
+                    await EventLog.WriteAsync("Error", "Motion", $"Shutdown blocked: {ex.Message}");
+                    MessageBox.Show(shell, ex.Message, "Motion shutdown blocked",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                finally
+                {
+                    closing = false;
+                }
+            };
             return shell;
         }
     }

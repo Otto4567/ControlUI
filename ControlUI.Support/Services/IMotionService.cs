@@ -12,6 +12,7 @@ public interface IMotionService : IDisposable
     bool IsOperationActive { get; }
     bool IsOperationStopRequested { get; }
     void BeginOperation();
+    void StopForShutdown();
     void EndOperation();
     void Initialize();
     

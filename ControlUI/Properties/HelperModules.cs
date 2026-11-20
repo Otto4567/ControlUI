@@ -1,4 +1,4 @@
-﻿using Prism.Ioc;
+using Prism.Ioc;
 using Prism.Modularity;
 using ControlUI.Support.Services;
 using ControlUI.Motion;
@@ -9,6 +9,8 @@ namespace ControlUI.Properties
     {
         public void OnInitialized(IContainerProvider containerProvider)
         {
+            var app = (App)System.Windows.Application.Current;
+            app.MotionService = containerProvider.Resolve<IMotionService>();
             var workspace = containerProvider.Resolve<ProjectWorkspace>();
             System.Windows.Application.Current.Exit += (_, _) => workspace.Save();
         }

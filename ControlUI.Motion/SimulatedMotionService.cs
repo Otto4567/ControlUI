@@ -22,7 +22,7 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
         {
             foreach (var axis in _axes.Values)
                 Update(axis);
-            if (_operationActive || _axes.Values.Any(axis => axis.Moving))
+            if (_shuttingDown || _operationActive || _axes.Values.Any(axis => axis.Moving))
                 throw new InvalidOperationException("Stop simulated motion before applying settings.");
             var axes = CreateAxes(configuration);
             save();
@@ -45,6 +45,8 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
     {
         lock (_gate)
         {
+            if (_shuttingDown)
+                throw new InvalidOperationException("Motion is shutting down.");
             if (_ready)
                 return;
             _axes.Values.First().Alarm = startWithAlarm;
@@ -93,6 +95,31 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
         }
     }
 
+    private bool _shuttingDown;
+
+    public void StopForShutdown()
+    {
+        lock (_gate)
+        {
+            _shuttingDown = true;
+            if (!_ready)
+                return;
+
+            StopAxes(_axes.Keys.ToArray(), abrupt: false);
+            var timeout = System.Diagnostics.Stopwatch.StartNew();
+            while (true)
+            {
+                foreach (var axis in _axes.Values)
+                    Update(axis);
+                if (_axes.Values.All(axis => !axis.Moving))
+                    return;
+                if (timeout.Elapsed >= TimeSpan.FromSeconds(10))
+                    throw new TimeoutException("Simulated motion did not stop within ten seconds.");
+                System.Threading.Thread.Sleep(50);
+            }
+        }
+    }
+
     public void BeginOperation()
     {
         lock (_gate)
@@ -100,7 +127,7 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
             RequireReady();
             foreach (var axis in _axes.Values)
                 Update(axis);
-            if (_operationActive || _axes.Values.Any(axis => axis.Moving))
+            if (_shuttingDown || _operationActive || _axes.Values.Any(axis => axis.Moving))
                 throw new InvalidOperationException("Simulated motion is already in use.");
             _operationStopped = false;
             _operationActive = true;
@@ -251,7 +278,7 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
         RequireReady();
         var axis = _axes[number];
         Update(axis);
-        if (operation != _operationActive || (operation && _operationStopped) ||
+        if (_shuttingDown || operation != _operationActive || (operation && _operationStopped) ||
             axis.Moving || (!allowAlarm && axis.Alarm))
             throw new InvalidOperationException("Simulated axis is busy or has a fault.");
         return axis;
