@@ -38,14 +38,46 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
         }
         ConfigurationChanged?.Invoke(this, EventArgs.Empty);
     }
-    private bool _initialized;
+    private volatile bool _initialized;
+    private readonly object _dispatchLock = new();
     private readonly object _motionLock = new();
     public bool IsReady { get; private set; }
     public bool IsOperationActive { get; private set; }
     private volatile bool _operationStopRequested;
     public bool IsOperationStopRequested => _operationStopRequested;
 
-    private bool _shuttingDown;
+    private volatile bool _shuttingDown;
+
+    public void StopForUnhandledException()
+    {
+        _shuttingDown = true;
+        _operationStopRequested = true;
+        lock (_dispatchLock)
+        {
+            if (!_initialized)
+                return;
+            var failures = new List<Exception>();
+            int count = GetAxisCount();
+            for (int axis = 0; axis < count; axis++)
+            {
+                uint result = CAXM.AxmMoveEStop(axis);
+                if (result != 0)
+                    failures.Add(CreateAxlError(result, nameof(CAXM.AxmMoveEStop), axis));
+            }
+            if (failures.Count > 0)
+                throw new AggregateException(failures);
+        }
+    }
+
+    private void DispatchStart(Func<uint> start, string name, int? axis = null)
+    {
+        lock (_dispatchLock)
+        {
+            if (_shuttingDown)
+                throw new InvalidOperationException("Motion is shutting down.");
+            Check(start(), name, axis);
+        }
+    }
 
     public void StopForShutdown()
     {
@@ -317,11 +349,11 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
         if (target.HasValue)
         {
             Check(CAXM.AxmMotSetAbsRelMode(axis, relative ? 1u : 0u), nameof(CAXM.AxmMotSetAbsRelMode));
-            Check(CAXM.AxmMoveStartPos(axis, move.Position, move.Speed, move.Accel, move.Decel), nameof(CAXM.AxmMoveStartPos));
+            DispatchStart(() => CAXM.AxmMoveStartPos(axis, move.Position, move.Speed, move.Accel, move.Decel), nameof(CAXM.AxmMoveStartPos));
         }
         else
         {
-            Check(CAXM.AxmMoveVel(axis, Math.CopySign(move.Speed, speed), move.Accel, move.Decel), nameof(CAXM.AxmMoveVel));
+            DispatchStart(() => CAXM.AxmMoveVel(axis, Math.CopySign(move.Speed, speed), move.Accel, move.Decel), nameof(CAXM.AxmMoveVel));
         }
     }
 
@@ -390,11 +422,11 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
             if (prepared.Length == 1)
             {
                 var move = prepared[0];
-                Check(CAXM.AxmMoveStartPos(move.Axis, move.Values.Position, move.Values.Speed,
+                DispatchStart(() => CAXM.AxmMoveStartPos(move.Axis, move.Values.Position, move.Values.Speed,
                     move.Values.Accel, move.Values.Decel), nameof(CAXM.AxmMoveStartPos), move.Axis);
                 return;
             }
-            Check(CAXM.AxmMoveStartMultiPos(prepared.Length, prepared.Select(x => x.Axis).ToArray(),
+            DispatchStart(() => CAXM.AxmMoveStartMultiPos(prepared.Length, prepared.Select(x => x.Axis).ToArray(),
                 prepared.Select(x => x.Values.Position).ToArray(), prepared.Select(x => x.Values.Speed).ToArray(),
                 prepared.Select(x => x.Values.Accel).ToArray(), prepared.Select(x => x.Values.Decel).ToArray()),
                 nameof(CAXM.AxmMoveStartMultiPos));
@@ -409,7 +441,7 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
             var state = ReadAxis(axisNumber);
             if (!state.ServoOn || state.Alarm || state.Emergency || state.Moving)
                 throw new InvalidOperationException("Homing requires a stopped axis with servo on and no fault.");
-            Check(CAXM.AxmHomeSetStart(axisNumber), nameof(CAXM.AxmHomeSetStart), axisNumber);
+            DispatchStart(() => CAXM.AxmHomeSetStart(axisNumber), nameof(CAXM.AxmHomeSetStart), axisNumber);
         }
     }
 
@@ -619,11 +651,18 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
 
     public void Dispose()
     {
-        if (_initialized)
-            CloseSession();
+        lock (_motionLock)
+            if (_initialized)
+                CloseSession();
     }
 
     private void CloseSession()
+    {
+        lock (_dispatchLock)
+            CloseSessionCore();
+    }
+
+    private void CloseSessionCore()
     {
         _initialized = false;
         IsReady = false;

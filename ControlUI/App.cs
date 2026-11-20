@@ -4,6 +4,7 @@ using System.Text.Json;
 using Jamesnet.Wpf.Controls;
 using System.Windows;
 using ControlUI.Forms.UI.Views;
+using ControlUI.Motion;
 
 namespace ControlUI
 {
@@ -13,10 +14,13 @@ namespace ControlUI
         internal bool SimulateMotion { get; }
         internal bool SimulateAlarm { get; }
         internal MotionPreferences MotionConfiguration { get; }
-        internal IMotionService? MotionService { get; set; }
+        internal IMotionService MotionService { get; }
 
         public App(bool simulateMotion, bool simulateAlarm)
         {
+            DispatcherUnhandledException += (_, e) => HandleFailure("Dispatcher", e.Exception);
+            AppDomain.CurrentDomain.UnhandledException += OnDomainFailure;
+            TaskScheduler.UnobservedTaskException += OnTaskFailure;
             SimulateMotion = simulateMotion;
             SimulateAlarm = simulateMotion && simulateAlarm;
             AppPreferences preferences;
@@ -30,9 +34,29 @@ namespace ControlUI
             }
 
             MotionConfiguration = preferences.Motion ?? new MotionPreferences();
+            MotionService = SimulateMotion
+                ? new SimulatedMotionService(TimeProvider.System, SimulateAlarm, MotionConfiguration)
+                : new AjinMotionService(MotionConfiguration);
             AppAppearance.Apply(preferences);
         }
          
+        private void OnDomainFailure(object sender, UnhandledExceptionEventArgs e) =>
+            HandleFailure("AppDomain", e.ExceptionObject as Exception ?? new Exception("Unhandled runtime error."));
+
+        private void OnTaskFailure(object? sender, UnobservedTaskExceptionEventArgs e)
+        {
+            HandleFailure("TaskScheduler", e.Exception);
+            e.SetObserved();
+        }
+
+        private void HandleFailure(string source, Exception error)
+        {
+            try { MotionService?.StopForUnhandledException(); }
+            catch (Exception stopError) { error = new AggregateException(error, stopError); }
+            try { EventLog.RecordFailure(source, error); }
+            catch (Exception logError) { System.Diagnostics.Trace.TraceError("{0}", logError); }
+        }
+
         protected override Window CreateShell()
         {
             var shell = new ShellWindow();
@@ -40,7 +64,15 @@ namespace ControlUI
                 shell.Title = "ControlUI — Motion Simulation";
             EventLog.RecordLifecycle(SimulateMotion ? "ControlUI started in motion simulation." : "ControlUI started.");
             Exit += (_, args) =>
-                EventLog.RecordLifecycle($"ControlUI exited. Exit code: {args.ApplicationExitCode}.");
+            {
+                try { MotionService?.Dispose(); }
+                finally
+                {
+                    AppDomain.CurrentDomain.UnhandledException -= OnDomainFailure;
+                    TaskScheduler.UnobservedTaskException -= OnTaskFailure;
+                    EventLog.RecordLifecycle($"ControlUI exited. Exit code: {args.ApplicationExitCode}.");
+                }
+            };
             bool closing = false;
             bool stopped = false;
             shell.Closing += async (_, args) =>

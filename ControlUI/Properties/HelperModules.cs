@@ -9,8 +9,6 @@ namespace ControlUI.Properties
     {
         public void OnInitialized(IContainerProvider containerProvider)
         {
-            var app = (App)System.Windows.Application.Current;
-            app.MotionService = containerProvider.Resolve<IMotionService>();
             var workspace = containerProvider.Resolve<ProjectWorkspace>();
             System.Windows.Application.Current.Exit += (_, _) => workspace.Save();
         }
@@ -23,11 +21,7 @@ namespace ControlUI.Properties
             containerRegistry.RegisterInstance(app.MotionConfiguration);
             containerRegistry.RegisterSingleton<ProjectWorkspace>();
             containerRegistry.RegisterInstance<IUserDialogs>(new WpfUserDialogs());
-            if (app.SimulateMotion)
-                containerRegistry.RegisterInstance<IMotionService>(
-                    new SimulatedMotionService(TimeProvider.System, app.SimulateAlarm, app.MotionConfiguration));
-            else
-                containerRegistry.RegisterSingleton<IMotionService, AjinMotionService>();
+            containerRegistry.RegisterInstance<IMotionService>(app.MotionService);
         }
     }
 }

@@ -68,6 +68,23 @@ public sealed class EventLogService
         }
     }
 
+    // Fatal handlers can run without a dispatcher or while another writer owns the daily log.
+    public void RecordFailure(string source, Exception error)
+    {
+        var entry = new EventLogEntry(DateTimeOffset.UtcNow, "Error", source, error.ToString());
+        if (_fileLock.Wait(0))
+        {
+            try
+            {
+                File.AppendAllText(GetLogPath(entry), SerializeLine(entry));
+                return;
+            }
+            finally { _fileLock.Release(); }
+        }
+        string fallback = Path.ChangeExtension(GetLogPath(entry), $"{Guid.NewGuid():N}.jsonl");
+        File.WriteAllText(fallback, SerializeLine(entry));
+    }
+
     private void AddEntry(EventLogEntry entry)
     {
         _entries.Insert(0, entry);

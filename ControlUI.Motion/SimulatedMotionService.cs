@@ -95,7 +95,15 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
         }
     }
 
-    private bool _shuttingDown;
+    private volatile bool _shuttingDown;
+    private long _faultStopTime = long.MaxValue;
+
+    public void StopForUnhandledException()
+    {
+        _shuttingDown = true;
+        _operationStopped = true;
+        Interlocked.CompareExchange(ref _faultStopTime, clock.GetTimestamp(), long.MaxValue);
+    }
 
     public void StopForShutdown()
     {
@@ -355,6 +363,18 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
     {
         if (!axis.Moving || axis.Trajectory is not { } sample)
             return;
+
+        long stopTime = Interlocked.Read(ref _faultStopTime);
+        if (stopTime != long.MaxValue)
+        {
+            double stoppedAt = Math.Max(0, clock.GetElapsedTime(axis.Timestamp, stopTime).TotalSeconds);
+            (axis.CommandPosition, _) = sample(stoppedAt);
+            axis.Position = axis.CommandPosition;
+            axis.Velocity = 0;
+            axis.Moving = axis.Homing = false;
+            axis.Trajectory = null;
+            return;
+        }
 
         double elapsed = clock.GetElapsedTime(axis.Timestamp).TotalSeconds;
         (axis.CommandPosition, _) = sample(elapsed);
