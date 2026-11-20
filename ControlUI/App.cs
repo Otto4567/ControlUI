@@ -48,8 +48,10 @@ namespace ControlUI
 
         private void OnTaskFailure(object? sender, UnobservedTaskExceptionEventArgs e)
         {
-            HandleFailure("TaskScheduler", e.Exception);
-            e.SetObserved();
+            // GC reports abandoned tasks later, independently of the current motion.
+            try { EventLog.RecordFailure("TaskScheduler", e.Exception); }
+            catch (Exception logError) { System.Diagnostics.Trace.TraceError("{0}", logError); }
+            finally { e.SetObserved(); }
         }
 
         private void HandleFailure(string source, Exception error)

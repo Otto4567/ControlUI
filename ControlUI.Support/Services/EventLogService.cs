@@ -51,7 +51,8 @@ public sealed class EventLogService
     public async Task WriteAsync(string level, string source, string message)
     {
         var entry = new EventLogEntry(DateTimeOffset.UtcNow, level, source, message);
-        await Application.Current.Dispatcher.InvokeAsync(() => AddEntry(entry));
+        if (Application.Current?.Dispatcher is { HasShutdownStarted: false } dispatcher)
+            await dispatcher.InvokeAsync(() => AddEntry(entry));
 
         await _fileLock.WaitAsync().ConfigureAwait(false);
         try

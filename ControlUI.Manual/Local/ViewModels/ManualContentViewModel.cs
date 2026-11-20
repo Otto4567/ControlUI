@@ -125,18 +125,18 @@ public partial class ManualContentViewModel : ObservableBase
         else _machine.Updated -= OnSnapshot;
     }
 
-    private void OnSnapshot(MachineSnapshot snapshot) =>
-        _ = _dispatcher.InvokeAsync(() =>
+    private Task OnSnapshot(MachineSnapshot snapshot) =>
+        _dispatcher.InvokeAsync(() =>
         {
             if (_monitorActive) ApplySnapshot(snapshot);
-        });
+        }).Task;
 
     private void ApplySnapshot(MachineSnapshot snapshot)
     {
         if (!_machine.IsCurrent(snapshot) || !ReferenceEquals(_displayConfiguration, snapshot.Configuration))
             return;
         _snapshot = snapshot;
-        IsMotionInitialized = snapshot.Initialized;
+        if (!IsMotionBusy) IsMotionInitialized = snapshot.Initialized;
         for (int i = 0; i < MotionAxes.Count; i++)
         {
             var axis = MotionAxes[i];
@@ -575,10 +575,8 @@ public partial class ManualContentViewModel : ObservableBase
             () => _motionService.LoadParameters(path),
             "Applying motion parameters...",
             "Motion parameters applied."))
-        {
             MotionParameterPath = path;
-            await RefreshSnapshotAsync();
-        }
+        await RefreshSnapshotAsync();
     }
 
     [RelayCommand(CanExecute = nameof(CanTransferParameters))]

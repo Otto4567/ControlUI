@@ -31,8 +31,9 @@ public sealed class MachineStateService : IDisposable
 {
     private readonly IMotionService _motion;
     private readonly Timer _timer;
+    private readonly EventLogService _log;
     private readonly object _gate = new();
-    private Action<MachineSnapshot>? _observers;
+    private Func<MachineSnapshot, Task>? _observers;
     private Task<MachineSnapshot>? _reading;
     // Only the single sampling task accesses this cache.
     private readonly Dictionary<int, (MotionAxisSettings Settings, double Scale)> _units = [];
@@ -40,18 +41,19 @@ public sealed class MachineStateService : IDisposable
     private long _revision;
     private bool _disposed;
 
-    public MachineStateService(IMotionService motion)
+    public MachineStateService(IMotionService motion, EventLogService log)
     {
         _motion = motion;
+        _log = log;
         _timer = new Timer(state =>
         {
             lock (_gate)
-                if (_observers != null && !_disposed)
-                    _ = RefreshAsync();
+                if (_observers != null && !_disposed && _reading is not { IsCompleted: false })
+                    _ = PollAsync();
         });
     }
 
-    public event Action<MachineSnapshot> Updated
+    public event Func<MachineSnapshot, Task> Updated
     {
         add
         {
@@ -87,7 +89,19 @@ public sealed class MachineStateService : IDisposable
         }
     }
 
-    private MachineSnapshot Sample()
+    private async Task PollAsync()
+    {
+        try { await RefreshAsync().ConfigureAwait(false); }
+        catch (Exception error) { await WarnAsync("Sampling failed", error).ConfigureAwait(false); }
+    }
+
+    private async Task WarnAsync(string context, Exception error)
+    {
+        try { await _log.WriteAsync("Warning", "MachineState", $"{context}: {error}").ConfigureAwait(false); }
+        catch (Exception logError) { System.Diagnostics.Trace.TraceWarning("{0}: {1}; logging failed: {2}", context, error, logError); }
+    }
+
+    private async Task<MachineSnapshot> Sample()
     {
         MachineSnapshot snapshot;
         do
@@ -105,9 +119,17 @@ public sealed class MachineStateService : IDisposable
             snapshot = new(config, revision, ready, axes.AsReadOnly());
         } while (!IsCurrent(snapshot));
 
-        Action<MachineSnapshot>? observers;
+        Func<MachineSnapshot, Task>? observers;
         lock (_gate) observers = _observers;
-        observers?.Invoke(snapshot);
+        if (observers != null)
+            foreach (var observer in Delegate.EnumerateInvocationList(observers))
+            {
+                try { await observer(snapshot).ConfigureAwait(false); }
+                catch (Exception error)
+                {
+                    await WarnAsync($"Observer {observer.Method.Name} failed", error).ConfigureAwait(false);
+                }
+            }
         return snapshot;
     }
 

@@ -11,7 +11,7 @@ public sealed class MachineStateServiceTests
     public async Task UnitsAreReusedUntilReloadAndOldSamplesAreInvalidated()
     {
         using var motion = new SimulatedMotionService(TimeProvider.System);
-        using var machine = new MachineStateService(motion);
+        using var machine = new MachineStateService(motion, new EventLogService());
         var offline = await machine.RefreshAsync();
         Assert.False(offline.Online);
         Assert.All(offline.Axes, axis => Assert.Null(axis.State));
@@ -45,11 +45,13 @@ public sealed class MachineStateServiceTests
     public async Task BothActiveScreensReceiveTheSameSample()
     {
         using var motion = new SimulatedMotionService(TimeProvider.System);
-        using var machine = new MachineStateService(motion);
+        using var machine = new MachineStateService(motion, new EventLogService());
         var seen = new ConcurrentQueue<MachineSnapshot>();
         var next = new TaskCompletionSource<MachineSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
-        machine.Updated += seen.Enqueue;
-        void Second(MachineSnapshot value) => next.TrySetResult(value);
+        Task First(MachineSnapshot value) { seen.Enqueue(value); return Task.CompletedTask; }
+        machine.Updated += First;
+        machine.Updated += _ => Task.FromException(new InvalidOperationException("Test observer failure"));
+        Task Second(MachineSnapshot value) { next.TrySetResult(value); return Task.CompletedTask; }
         machine.Updated += Second;
         try
         {
@@ -59,7 +61,7 @@ public sealed class MachineStateServiceTests
         finally
         {
             machine.Updated -= Second;
-            machine.Updated -= seen.Enqueue;
+            machine.Updated -= First;
         }
     }
 }

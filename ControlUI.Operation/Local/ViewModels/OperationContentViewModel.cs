@@ -149,8 +149,8 @@ namespace ControlUI.Operation.Local.ViewModels
         private Task AccessMotionAsync(Action action, CancellationToken cancellation = default) =>
             AccessMotionAsync(() => { action(); return true; }, cancellation);
 
-        private void OnSnapshot(MachineSnapshot snapshot) =>
-            _ = _dispatcher.InvokeAsync(() =>
+        private Task OnSnapshot(MachineSnapshot snapshot) =>
+            _dispatcher.InvokeAsync(() =>
             {
                 if (!_monitorActive || !_machine.IsCurrent(snapshot) ||
                     !ReferenceEquals(_displayConfiguration, snapshot.Configuration)) return;
@@ -179,7 +179,7 @@ namespace ControlUI.Operation.Local.ViewModels
                 MotionOnline = snapshot.Online;
                 OnPropertyChanged(nameof(IsProjectStartReady));
                 RefreshCommands();
-            });
+            }).Task;
 
         private bool CanHome() => MotionOnline && !IsOperating && !_stopping &&
             Axes.All(axis => axis.ServoOn == true && axis.Moving == false && axis.Alarm == false && axis.Emergency == false);
