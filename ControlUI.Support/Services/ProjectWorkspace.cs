@@ -23,9 +23,7 @@ public sealed class ProjectWorkspace
     private SequenceRecipe? _selectedProject;
     private SequencePage? _selectedPage;
     private SequenceStep? _selectedStep;
-    public static string FilePath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "ControlUI", "workspace.json");
+    public static string FilePath => MachinePaths.Workspace;
 
     public static JsonSerializerOptions JsonOptions { get; } = new()
     {

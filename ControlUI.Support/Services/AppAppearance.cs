@@ -9,8 +9,7 @@ public sealed record AppPreferences(string Theme, string Language)
 {
     public MotionPreferences Motion { get; init; } = new();
     public static readonly AppPreferences Default = new("Dark", "English");
-    public static string PathName { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ControlUI", "settings.json");
+    public static string PathName => MachinePaths.Settings;
 
     public static AppPreferences Load() => Load(PathName);
 

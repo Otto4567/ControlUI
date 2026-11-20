@@ -13,6 +13,7 @@ namespace ControlUI
         internal EventLogService EventLog { get; } = new();
         internal bool SimulateMotion { get; }
         internal bool SimulateAlarm { get; }
+        internal ProjectWorkspace Workspace { get; }
         internal MotionPreferences MotionConfiguration { get; }
         internal IMotionService MotionService { get; }
 
@@ -21,6 +22,8 @@ namespace ControlUI
             DispatcherUnhandledException += (_, e) => HandleFailure("Dispatcher", e.Exception);
             AppDomain.CurrentDomain.UnhandledException += OnDomainFailure;
             TaskScheduler.UnobservedTaskException += OnTaskFailure;
+            MachinePaths.Initialize();
+            Workspace = new ProjectWorkspace();
             SimulateMotion = simulateMotion;
             SimulateAlarm = simulateMotion && simulateAlarm;
             AppPreferences preferences;
@@ -70,6 +73,7 @@ namespace ControlUI
                 {
                     AppDomain.CurrentDomain.UnhandledException -= OnDomainFailure;
                     TaskScheduler.UnobservedTaskException -= OnTaskFailure;
+                    Workspace.Save();
                     EventLog.RecordLifecycle($"ControlUI exited. Exit code: {args.ApplicationExitCode}.");
                 }
             };

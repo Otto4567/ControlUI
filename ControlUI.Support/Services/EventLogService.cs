@@ -94,9 +94,7 @@ public sealed class EventLogService
 
     private static string GetLogPath(EventLogEntry entry)
     {
-        string folder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ControlUI", "Logs");
+        string folder = MachinePaths.Logs;
         Directory.CreateDirectory(folder);
         string date = entry.Time.ToLocalTime().ToString("yyyy-MM-dd",
             System.Globalization.CultureInfo.InvariantCulture);

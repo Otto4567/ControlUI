@@ -1,7 +1,6 @@
 using Prism.Ioc;
 using Prism.Modularity;
 using ControlUI.Support.Services;
-using ControlUI.Motion;
 
 namespace ControlUI.Properties
 {
@@ -9,8 +8,6 @@ namespace ControlUI.Properties
     {
         public void OnInitialized(IContainerProvider containerProvider)
         {
-            var workspace = containerProvider.Resolve<ProjectWorkspace>();
-            System.Windows.Application.Current.Exit += (_, _) => workspace.Save();
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
@@ -19,7 +16,7 @@ namespace ControlUI.Properties
             var app = (App)System.Windows.Application.Current;
             containerRegistry.RegisterInstance(app.EventLog);
             containerRegistry.RegisterInstance(app.MotionConfiguration);
-            containerRegistry.RegisterSingleton<ProjectWorkspace>();
+            containerRegistry.RegisterInstance(app.Workspace);
             containerRegistry.RegisterInstance<IUserDialogs>(new WpfUserDialogs());
             containerRegistry.RegisterInstance<IMotionService>(app.MotionService);
         }
