@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace ControlUI.Support.Services;
 
 public sealed record AxisSnapshot(ProgramAxis Axis, MotionAxisState? State, MotionAxisSettings? Settings,
@@ -34,6 +36,14 @@ public sealed class MachineStateService : IDisposable
     private readonly EventLogService _log;
     private readonly object _gate = new();
     private Func<MachineSnapshot, Task>? _observers;
+    // Only Sample updates failure counts. Unsubscribing releases the observer and its history.
+    private readonly ConditionalWeakTable<Func<MachineSnapshot, Task>, Dictionary<string, FailureWindow>> _failures = new();
+    private sealed class FailureWindow
+    {
+        public long ReportedAt = TimeProvider.System.GetTimestamp();
+        public int Repeats;
+    }
+
     private Task<MachineSnapshot>? _reading;
     // Only the single sampling task accesses this cache.
     private readonly Dictionary<int, (MotionAxisSettings Settings, double Scale)> _units = [];
@@ -92,13 +102,13 @@ public sealed class MachineStateService : IDisposable
     private async Task PollAsync()
     {
         try { await RefreshAsync().ConfigureAwait(false); }
-        catch (Exception error) { await WarnAsync("Sampling failed", error).ConfigureAwait(false); }
+        catch (Exception error) { await LogAsync("Warning", $"Sampling failed: {error}").ConfigureAwait(false); }
     }
 
-    private async Task WarnAsync(string context, Exception error)
+    private async Task LogAsync(string level, string message)
     {
-        try { await _log.WriteAsync("Warning", "MachineState", $"{context}: {error}").ConfigureAwait(false); }
-        catch (Exception logError) { System.Diagnostics.Trace.TraceWarning("{0}: {1}; logging failed: {2}", context, error, logError); }
+        try { await _log.WriteAsync(level, "MachineState", message).ConfigureAwait(false); }
+        catch (Exception logError) { System.Diagnostics.Trace.TraceWarning("{0}; logging failed: {1}", message, logError); }
     }
 
     private async Task<MachineSnapshot> Sample()
@@ -127,10 +137,35 @@ public sealed class MachineStateService : IDisposable
                 try { await observer(snapshot).ConfigureAwait(false); }
                 catch (Exception error)
                 {
-                    await WarnAsync($"Observer {observer.Method.Name} failed", error).ConfigureAwait(false);
+                    await ReportObserverFailureAsync(observer, error).ConfigureAwait(false);
+                    continue;
+                }
+                if (_failures.TryGetValue(observer, out var failures))
+                {
+                    _failures.Remove(observer);
+                    await LogAsync("Info", $"Observer {observer.Method.Name} recovered. Pending repeats: {failures.Values.Sum(f => (long)f.Repeats)}.").ConfigureAwait(false);
                 }
             }
         return snapshot;
+    }
+
+    private Task ReportObserverFailureAsync(Func<MachineSnapshot, Task> observer, Exception error)
+    {
+        var failures = _failures.GetOrCreateValue(observer);
+        if (!failures.TryGetValue(error.Message, out var window))
+        {
+            failures.Add(error.Message, new FailureWindow());
+            return LogAsync("Warning", $"Observer {observer.Method.Name} failed: {error}");
+        }
+
+        window.Repeats++;
+        if (TimeProvider.System.GetElapsedTime(window.ReportedAt) < TimeSpan.FromMinutes(1))
+            return Task.CompletedTask;
+
+        var message = $"Observer {observer.Method.Name}: {error.Message} (repeated {window.Repeats} times).";
+        window.Repeats = 0;
+        window.ReportedAt = TimeProvider.System.GetTimestamp();
+        return LogAsync("Warning", message);
     }
 
     private AxisSnapshot ReadAxis(ProgramAxis axis)
