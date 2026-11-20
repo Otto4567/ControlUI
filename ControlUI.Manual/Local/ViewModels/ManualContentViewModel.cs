@@ -21,21 +21,21 @@ public partial class ManualContentViewModel : ObservableBase
     private readonly NavigationService _navigation;
     private readonly IUserDialogs _dialogs;
     private readonly SemaphoreSlim _motionQueue = new(1);
-    private readonly DispatcherTimer _monitor = new() { Interval = TimeSpan.FromMilliseconds(250) };
-    private bool _readingAxes;
-    private bool _axisReadFailed;
+    private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
+    private readonly MachineStateService _machine;
+    private MachineSnapshot? _snapshot;
+    private MotionPreferences? _displayConfiguration;
     private bool _commandFailed;
     private bool _allStopRequested;
 
     public string MainStatus =>
         _pendingAllStops != 0 ? "Stopping" :
-        _commandFailed || _axisReadFailed ||
-            MotionAxes.Any(axis => axis.Signals[1].IsActive == true || axis.Signals[8].IsActive == true) ? "Fault" :
+        _commandFailed || _snapshot?.Fault == true ? "Fault" :
         IsMotionBusy ? "Busy" :
         !IsMotionInitialized ? "Offline" :
-        MotionAxes.Any(axis => axis.Signals[2].IsActive == true) ? (_allStopRequested ? "Stopping" : "Running") :
+        MotionAxes.Any(axis => axis.Moving.IsActive == true) ? (_allStopRequested ? "Stopping" : "Running") :
         _allStopRequested ? "Stopped" :
-        MotionAxes.Count > 0 && MotionAxes.All(axis => axis.Signals[0].IsActive == true) ? "Ready" : "Standby";
+        _snapshot?.Ready == true ? "Ready" : "Standby";
     private bool _monitorActive;
     private int _pendingAllStops;
 
@@ -74,22 +74,22 @@ public partial class ManualContentViewModel : ObservableBase
     [NotifyPropertyChangedFor(nameof(MainStatus))]
     private bool _isMotionInitialized;
 
-    public ManualContentViewModel(IMotionService motionService, EventLogService eventLog, NavigationService navigation, IUserDialogs dialogs)
+    public ManualContentViewModel(IMotionService motionService, EventLogService eventLog, NavigationService navigation, IUserDialogs dialogs, MachineStateService machine)
     {
         _motionService = motionService;
         _eventLog = eventLog;
         _navigation = navigation;
         _dialogs = dialogs;
-        _monitor.Tick += async (_, _) => await ReadAxesAsync();
+        _machine = machine;
         RebuildAxes();
         WeakEventManager<IMotionService, EventArgs>.AddHandler(
             _motionService, nameof(IMotionService.ConfigurationChanged), OnConfigurationChanged);
     }
 
     private void OnConfigurationChanged(object? sender, EventArgs args) =>
-        _ = _monitor.Dispatcher.InvokeAsync(() =>
+        _ = _dispatcher.InvokeAsync(() =>
         {
-            _monitor.Stop();
+            _snapshot = null;
             foreach (var axis in MotionAxes)
             {
                 axis.Repeat?.Cancel();
@@ -102,11 +102,10 @@ public partial class ManualContentViewModel : ObservableBase
 
     private void RebuildAxes()
     {
-        MotionAxes = _motionService.Configuration.Axes.Select(axis =>
+        _displayConfiguration = _motionService.Configuration;
+        MotionAxes = _displayConfiguration.Axes.Select(axis =>
             new MotionAxisProfile(axis.Name, axis.Number, axis.MicrometersPerPulse, axis.MaxSpeed,
                 axis.GetJogDirection())).ToArray();
-        foreach (var axis in MotionAxes)
-            axis.Signals = Enumerable.Range(0, 9).Select(_ => new AxisSignalValue()).ToArray();
         MotionParameterPath = _motionService.Configuration.GetMotPath();
         OnPropertyChanged(nameof(MotionAxes));
         OnPropertyChanged(nameof(AxisColumns));
@@ -116,77 +115,60 @@ public partial class ManualContentViewModel : ObservableBase
 
     public void SetMonitoring(bool active)
     {
+        if (_monitorActive == active) return;
         _monitorActive = active;
-        if (active && _motionService.IsReady)
+        if (active)
         {
-            _monitor.Start();
-            _ = SynchronizeMotionAsync();
+            _machine.Updated += OnSnapshot;
+            _ = _machine.RefreshAsync();
         }
-        else
-        {
-            _monitor.Stop();
-            if (!IsMotionBusy && !_motionService.IsReady)
-                IsMotionInitialized = false;
-        }
+        else _machine.Updated -= OnSnapshot;
     }
-    private async Task SynchronizeMotionAsync()
-    {
-        if (!IsMotionInitialized && !IsMotionBusy && _motionService.IsReady)
+
+    private void OnSnapshot(MachineSnapshot snapshot) =>
+        _ = _dispatcher.InvokeAsync(() =>
         {
-            IsMotionInitialized = true;
-            await RefreshAxisSettingsAsync();
+            if (_monitorActive) ApplySnapshot(snapshot);
+        });
+
+    private void ApplySnapshot(MachineSnapshot snapshot)
+    {
+        if (!_machine.IsCurrent(snapshot) || !ReferenceEquals(_displayConfiguration, snapshot.Configuration))
+            return;
+        _snapshot = snapshot;
+        IsMotionInitialized = snapshot.Initialized;
+        for (int i = 0; i < MotionAxes.Count; i++)
+        {
+            var axis = MotionAxes[i];
+            var sample = snapshot.Axes[i];
+            var state = sample.State;
+            axis.CommandPositionMm = sample.CommandMm;
+            axis.ActualPositionMm = sample.ActualMm;
+            axis.ActualVelocityMmPerSecond = sample.SpeedMmPerSecond;
+            axis.MillimetersPerNativeUnit = sample.MillimetersPerUnit ?? 0;
+            axis.SdkSettings = sample.Settings is { } settings
+                ? $"{settings.MoveUnit:G}/{settings.Pulses} · {settings.MaxVelocity:G} · {settings.AccelUnitCode}" : "—";
+            axis.AlarmCode = state is { Alarm: true }
+                ? state.AlarmCode is { } code ? $"Alarm 0x{code:X4}" : "Alarm · code unavailable"
+                : null;
+            axis.ServoOn.IsActive = state?.ServoOn;
+            axis.Alarm.IsActive = state?.Alarm;
+            axis.Moving.IsActive = state?.Moving;
+            axis.InPosition.IsActive = state?.InPosition;
+            axis.HomeSignal.IsActive = state?.HomeSignal;
+            axis.Homed.IsActive = state?.Homed;
+            axis.PositiveLimit.IsActive = state?.PositiveLimit;
+            axis.NegativeLimit.IsActive = state?.NegativeLimit;
+            axis.Emergency.IsActive = state?.Emergency;
+            if (sample.ReadError != null) MotionStatus = sample.ReadError;
         }
-        await ReadAxesAsync();
+        OnPropertyChanged(nameof(MainStatus));
+        LoadMotionParametersCommand.NotifyCanExecuteChanged();
+        SaveMotionParametersCommand.NotifyCanExecuteChanged();
     }
 
     private bool CanTransferParameters() => !IsSimulation && !IsMotionBusy && IsMotionInitialized && !_motionService.IsOperationActive &&
-        MotionAxes.All(axis => !axis.JogHeld && axis.Repeat is null && axis.Signals[2].IsActive != true);
-
-    private async Task ReadAxesAsync()
-    {
-        if (_readingAxes || IsMotionBusy)
-            return;
-
-        _readingAxes = true;
-        _axisReadFailed = false;
-        try
-        {
-            foreach (var axis in MotionAxes)
-            {
-                try
-                {
-                    var state = await OnMotionThreadAsync(() => _motionService.ReadAxis(axis.AxisNumber));
-                    axis.AlarmCode = state.Alarm
-                        ? state.AlarmCode is { } code ? $"Alarm 0x{code:X4}" : "Alarm · code unavailable"
-                        : null;
-                    double scale = axis.MillimetersPerNativeUnit;
-                    axis.CommandPositionMm = scale > 0 ? state.CommandPosition * scale : null;
-                    axis.ActualPositionMm = scale > 0 ? state.ActualPosition * scale : null;
-                    axis.ActualVelocityMmPerSecond = scale > 0 ? state.Velocity * scale : null;
-                    bool[] flags = [state.ServoOn, state.Alarm, state.Moving, state.InPosition,
-                        state.HomeSignal, state.Homed, state.PositiveLimit, state.NegativeLimit, state.Emergency];
-                    for (int i = 0; i < flags.Length; i++)
-                        axis.Signals[i].IsActive = flags[i];
-                }
-                catch (Exception ex)
-                {
-                    axis.AlarmCode = null;
-                    axis.CommandPositionMm = axis.ActualPositionMm = axis.ActualVelocityMmPerSecond = null;
-                    foreach (var signal in axis.Signals)
-                        signal.IsActive = null;
-                    _axisReadFailed = true;
-                    MotionStatus = ex.Message;
-                }
-            }
-        }
-        finally
-        {
-            _readingAxes = false;
-            OnPropertyChanged(nameof(MainStatus));
-            LoadMotionParametersCommand.NotifyCanExecuteChanged();
-            SaveMotionParametersCommand.NotifyCanExecuteChanged();
-        }
-    }
+        MotionAxes.All(axis => !axis.JogHeld && axis.Repeat is null && axis.Moving.IsActive != true);
 
     public bool IsSimulation => _motionService.IsSimulation;
 
@@ -231,7 +213,7 @@ public partial class ManualContentViewModel : ObservableBase
         RunAxisMaintenanceAsync(axis, "Alarm reset", _motionService.ResetAxisAlarm);
 
     private Task RunAxisMaintenanceAsync(MotionAxisProfile? axis, string action, Action<int> execute) =>
-        axis is null || !MotionAxes.Contains(axis) || axis.Signals[2].IsActive != false
+        axis is null || !MotionAxes.Contains(axis) || axis.Moving.IsActive != false
             ? Task.CompletedTask
             : RunManualGroupAsync($"{axis.Axis} · {action}", () => RunAxisAsync(() => execute(axis.AxisNumber)));
 
@@ -243,7 +225,6 @@ public partial class ManualContentViewModel : ObservableBase
 
         _commandFailed = false;
         _allStopRequested = false;
-        _axisReadFailed = false;
         IsMotionBusy = true;
         MotionStatus = $"{name}...";
         bool ownsMotion = false;
@@ -534,44 +515,14 @@ public partial class ManualContentViewModel : ObservableBase
         }
     }
 
-    private async Task RefreshAxisSettingsAsync()
-    {
-        foreach (var axis in MotionAxes)
-        {
-            axis.SdkSettings = "—";
-            axis.MillimetersPerNativeUnit = 0;
-        }
-
-        var settings = new MotionAxisSettings[MotionAxes.Count];
-        if (!await RunMotionAsync(
-            () =>
-            {
-                for (int i = 0; i < settings.Length; i++)
-                    settings[i] = _motionService.GetAxisSettings(MotionAxes[i].AxisNumber);
-            },
-            "Reading axis settings...",
-            "Motion parameters applied and axis settings read."))
-        {
-            MotionStatus = $"Parameters applied. Axis readback failed: {MotionStatus}";
-            return;
-        }
-
-        for (int i = 0; i < settings.Length; i++)
-        {
-            var value = settings[i];
-            if (value.MoveUnit > 0 && value.Pulses > 0)
-                MotionAxes[i].MillimetersPerNativeUnit = MotionAxes[i].MicrometersPerPulse / 1000 * value.Pulses / value.MoveUnit;
-            MotionAxes[i].SdkSettings = $"{value.MoveUnit:G}/{value.Pulses} · {value.MaxVelocity:G} · {value.AccelUnitCode}";
-        }
-    }
+    private async Task RefreshSnapshotAsync() => ApplySnapshot(await _machine.RefreshAsync());
 
     [RelayCommand(CanExecute = nameof(CanInitialize))]
     private async Task InitializeMotionAsync()
     {
         if (_motionService.IsReady)
         {
-            await SynchronizeMotionAsync();
-            SetMonitoring(_monitorActive);
+            await RefreshSnapshotAsync();
             return;
         }
 
@@ -604,12 +555,11 @@ public partial class ManualContentViewModel : ObservableBase
         {
             MotionParameterPath = path;
             IsMotionInitialized = true;
-            await RefreshAxisSettingsAsync();
-            SetMonitoring(_monitorActive);
+            await RefreshSnapshotAsync();
         }
         else
         {
-            _monitor.Stop();
+            _snapshot = null;
             IsMotionInitialized = false;
         }
     }
@@ -627,7 +577,7 @@ public partial class ManualContentViewModel : ObservableBase
             "Motion parameters applied."))
         {
             MotionParameterPath = path;
-            await RefreshAxisSettingsAsync();
+            await RefreshSnapshotAsync();
         }
     }
 
@@ -655,7 +605,6 @@ public partial class ManualContentViewModel : ObservableBase
 
         _commandFailed = false;
         _allStopRequested = false;
-        _axisReadFailed = false;
         IsMotionBusy = true;
         MotionStatus = busyMessage;
 

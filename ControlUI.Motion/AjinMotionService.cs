@@ -42,7 +42,10 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
     // AXM reference does not establish concurrent stop-call safety. Serialize only dispatch and close.
     public MotionDispatch Dispatch { get; } = new();
     private readonly object _motionLock = new();
-    public bool IsReady { get; private set; }
+    private long _parameterRevision;
+    public long ParameterRevision => Interlocked.Read(ref _parameterRevision);
+    private volatile bool _ready;
+    public bool IsReady => _ready;
     private volatile bool _operationActive;
     public bool IsOperationActive => _operationActive;
     private volatile bool _operationStopRequested;
@@ -196,9 +199,10 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
                 Check(CAXM.AxmInfoIsInvalidAxisNo(axis.Number), nameof(CAXM.AxmInfoIsInvalidAxisNo), axis.Number);
             if (IsReady)
                 EnsureAxesStopped();
-            IsReady = false;
+            _ready = false;
+            Interlocked.Increment(ref _parameterRevision);
             LoadParametersCore(path);
-            IsReady = true;
+            _ready = true;
         }
     }
 
@@ -247,23 +251,25 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
 
     public MotionAxisSettings GetAxisSettings(int axisNumber)
     {
-        if (!_initialized)
-            throw new InvalidOperationException("The motion library is not initialized.");
+        lock (_motionLock)
+        {
+            if (!_initialized)
+                throw new InvalidOperationException("The motion library is not initialized.");
 
-        double unit = 0;
-        int pulses = 0;
-        double maxVelocity = 0;
-        uint accelUnit = 0;
+            double unit = 0;
+            int pulses = 0;
+            double maxVelocity = 0;
+            uint accelUnit = 0;
 
-        Check(CAXM.AxmMotGetMoveUnitPerPulse(axisNumber, ref unit, ref pulses),
-            nameof(CAXM.AxmMotGetMoveUnitPerPulse), axisNumber);
-        Check(CAXM.AxmMotGetMaxVel(axisNumber, ref maxVelocity),
-            nameof(CAXM.AxmMotGetMaxVel), axisNumber);
-        Check(CAXM.AxmMotGetAccelUnit(axisNumber, ref accelUnit),
-            nameof(CAXM.AxmMotGetAccelUnit), axisNumber);
+            Check(CAXM.AxmMotGetMoveUnitPerPulse(axisNumber, ref unit, ref pulses),
+                nameof(CAXM.AxmMotGetMoveUnitPerPulse), axisNumber);
+            Check(CAXM.AxmMotGetMaxVel(axisNumber, ref maxVelocity),
+                nameof(CAXM.AxmMotGetMaxVel), axisNumber);
+            Check(CAXM.AxmMotGetAccelUnit(axisNumber, ref accelUnit),
+                nameof(CAXM.AxmMotGetAccelUnit), axisNumber);
 
-        return new MotionAxisSettings(unit, pulses, maxVelocity, accelUnit);
-
+            return new MotionAxisSettings(unit, pulses, maxVelocity, accelUnit);
+        }
     }
 
     public MotionBoardReadback ReadMotionBoard(int axisNumber)
@@ -560,7 +566,7 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
                 }
                 if (recoveryErrors.Count != 0)
                 {
-                    IsReady = false;
+                    _ready = false;
                     throw new InvalidOperationException(
                         $"{error.Message} Rollback failed. Load a verified MOT file before moving. " +
                         string.Join(" ", recoveryErrors.Select(failure => failure.Message)), error);
@@ -672,7 +678,7 @@ public sealed class AjinMotionService(MotionPreferences configuration) : IMotion
     private void CloseSessionCore()
     {
         _initialized = false;
-        IsReady = false;
+        _ready = false;
         if (CAXL.AxlIsOpened() != 0)
         {
             CAXL.AxlClose();

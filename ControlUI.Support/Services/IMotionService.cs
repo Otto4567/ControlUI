@@ -9,6 +9,7 @@ public interface IMotionService : IDisposable
     MotionPreferences Configuration { get; }
     event EventHandler<EventArgs>? ConfigurationChanged;
     void ApplyConfiguration(MotionPreferences configuration, Action save);
+    long ParameterRevision { get; }
     bool IsReady { get; }
     bool IsOperationActive { get; }
     bool IsOperationStopRequested { get; }

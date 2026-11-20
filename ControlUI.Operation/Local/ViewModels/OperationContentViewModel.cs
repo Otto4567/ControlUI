@@ -5,7 +5,6 @@ using ControlUI.Support.Services;
 using ControlUI.Support.Local.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,17 +17,20 @@ namespace ControlUI.Operation.Local.ViewModels
     {
         private readonly EventLogService _eventLog;
         private readonly IMotionService _motion;
-        private readonly DispatcherTimer _monitor = new() { Interval = TimeSpan.FromMilliseconds(250) };
+        private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
+        private readonly MachineStateService _machine;
+        private MachineSnapshot? _snapshot;
+        private MotionPreferences? _displayConfiguration;
         private readonly SemaphoreSlim _queue = new(1);
         private CancellationTokenSource? _operation;
-        private bool _refreshing;
+        private bool _monitorActive;
         private bool _stopping;
         private bool _pauseSettled;
         private string? _lastOutcome;
         private readonly SequenceEngine _engine;
         private Task? _stopRequest;
 
-        public OperationContentViewModel(EventLogService eventLog, ProjectWorkspace workspace, IMotionService motion, SequenceEngine engine)
+        public OperationContentViewModel(EventLogService eventLog, ProjectWorkspace workspace, IMotionService motion, SequenceEngine engine, MachineStateService machine)
         {
             _engine = engine;
             _eventLog = eventLog;
@@ -38,18 +40,19 @@ namespace ControlUI.Operation.Local.ViewModels
             RebuildAxes();
             WeakEventManager<IMotionService, EventArgs>.AddHandler(
                 _motion, nameof(IMotionService.ConfigurationChanged), OnConfigurationChanged);
-            _monitor.Tick += async (_, _) => await RefreshAxesAsync();
+            _machine = machine;
         }
 
         public void SetMonitoring(bool active)
         {
+            if (_monitorActive == active) return;
+            _monitorActive = active;
             if (active)
             {
-                _monitor.Start();
-                _ = RefreshAxesAsync();
+                _machine.Updated += OnSnapshot;
+                _ = _machine.RefreshAsync();
             }
-            else
-                _monitor.Stop();
+            else _machine.Updated -= OnSnapshot;
         }
 
         public ObservableCollection<SequenceRecipe> Projects { get; }
@@ -76,14 +79,7 @@ namespace ControlUI.Operation.Local.ViewModels
         [ObservableProperty] private string? _stepElapsedTime;
         public string StepProgress => $"{CompletedSteps} / {StepCount}";
 
-        public bool IsProjectStartReady => SelectedProject is not null && Axes.Count > 0 &&
-            Axes.All(axis => axis.IsConnected == true && axis.IsHomed == true &&
-                axis.ServoOn == true && axis.Alarm == false && axis.Emergency == false && axis.Moving == false);
-
-        private void OnAxisChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            OnPropertyChanged(nameof(IsProjectStartReady));
-        }
+        public bool IsProjectStartReady => SelectedProject != null && _snapshot?.Ready == true;
 
         public ReadOnlyObservableCollection<EventLogEntry> Events { get; }
 
@@ -94,8 +90,9 @@ namespace ControlUI.Operation.Local.ViewModels
         public ObservableCollection<AxisStatusInfo> Axes { get; } = [];
 
         private void OnConfigurationChanged(object? sender, EventArgs args) =>
-            _ = _monitor.Dispatcher.InvokeAsync(() =>
+            _ = _dispatcher.InvokeAsync(() =>
             {
+                _snapshot = null;
                 MotionOnline = false;
                 OperationStatus = "Motion settings applied. Initialize motion in Manual.";
                 RebuildAxes();
@@ -104,13 +101,11 @@ namespace ControlUI.Operation.Local.ViewModels
 
         private void RebuildAxes()
         {
-            foreach (var axis in Axes)
-                axis.PropertyChanged -= OnAxisChanged;
+            _displayConfiguration = _motion.Configuration;
             Axes.Clear();
-            foreach (var axis in _motion.Configuration.Axes)
+            foreach (var axis in _displayConfiguration.Axes)
             {
                 var status = new AxisStatusInfo(axis.Name, axis.Number, axis.MillimetersPerPulse, axis.MaxSpeed);
-                status.PropertyChanged += OnAxisChanged;
                 Axes.Add(status);
             }
             OnPropertyChanged(nameof(IsProjectStartReady));
@@ -122,15 +117,15 @@ namespace ControlUI.Operation.Local.ViewModels
             {
                 if (_stopping || (_lastOutcome == "Stopped" && Axes.Any(axis => axis.Moving == true)))
                     return "Stopping";
+                if (_lastOutcome == "Fault" || _snapshot?.Fault == true)
+                    return "Fault";
                 if (!MotionOnline)
                     return "Offline";
-                if (_lastOutcome == "Fault" || Axes.Any(axis => axis.Alarm == true || axis.Emergency == true))
-                    return "Fault";
                 if (IsSequenceRunning)
                     return IsPaused ? (_pauseSettled ? "Paused" : "Pausing") : "Running";
                 if (IsOperating)
                     return "Busy";
-                return _lastOutcome ?? (IsProjectStartReady ? "Ready" : "Standby");
+                return _lastOutcome ?? (_snapshot?.Ready == true ? "Ready" : "Standby");
             }
         }
 
@@ -154,33 +149,21 @@ namespace ControlUI.Operation.Local.ViewModels
         private Task AccessMotionAsync(Action action, CancellationToken cancellation = default) =>
             AccessMotionAsync(() => { action(); return true; }, cancellation);
 
-        private async Task RefreshAxesAsync()
-        {
-            if (_refreshing)
-                return;
-            _refreshing = true;
-            try
+        private void OnSnapshot(MachineSnapshot snapshot) =>
+            _ = _dispatcher.InvokeAsync(() =>
             {
-                foreach (var axis in Axes.ToArray())
+                if (!_monitorActive || !_machine.IsCurrent(snapshot) ||
+                    !ReferenceEquals(_displayConfiguration, snapshot.Configuration)) return;
+                _snapshot = snapshot;
+                for (int i = 0; i < Axes.Count; i++)
                 {
-                    MotionAxisState? state = null;
-                    double scale = 0;
-                    if (_motion.IsReady)
-                    {
-                        try
-                        {
-                            (state, scale) = await AccessMotionAsync(() => ReadAxis(axis));
-                        }
-                        catch (Exception ex)
-                        {
-                            if (!IsOperating)
-                                OperationStatus = ex.Message;
-                        }
-                    }
-                    axis.IsConnected = state is not null;
-                    axis.CommandPosition = state?.CommandPosition * scale;
-                    axis.Position = state?.ActualPosition * scale;
-                    axis.Speed = state?.Velocity * scale;
+                    var axis = Axes[i];
+                    var sample = snapshot.Axes[i];
+                    var state = sample.State;
+                    axis.IsConnected = state != null;
+                    axis.CommandPosition = sample.CommandMm;
+                    axis.Position = sample.ActualMm;
+                    axis.Speed = sample.SpeedMmPerSecond;
                     axis.ServoOn = state?.ServoOn;
                     axis.Alarm = state?.Alarm;
                     axis.Moving = state?.Moving;
@@ -190,24 +173,13 @@ namespace ControlUI.Operation.Local.ViewModels
                     axis.PositiveLimit = state?.PositiveLimit;
                     axis.NegativeLimit = state?.NegativeLimit;
                     axis.Emergency = state?.Emergency;
+                    if (!IsOperating && sample.ReadError != null) OperationStatus = sample.ReadError;
                 }
-                bool online = Axes.All(axis => axis.IsConnected == true);
-                if (online && !MotionOnline && !IsOperating)
-                    OperationStatus = "Motion connected.";
-                MotionOnline = online;
+                if (snapshot.Online && !MotionOnline && !IsOperating) OperationStatus = "Motion connected.";
+                MotionOnline = snapshot.Online;
+                OnPropertyChanged(nameof(IsProjectStartReady));
                 RefreshCommands();
-            }
-            finally { _refreshing = false; }
-        }
-
-        private (MotionAxisState State, double Scale) ReadAxis(AxisStatusInfo axis)
-        {
-            var settings = _motion.GetAxisSettings(axis.Number);
-            double scale = axis.MillimetersPerPulse * settings.Pulses / settings.MoveUnit;
-            if (!double.IsFinite(scale) || scale <= 0)
-                throw new InvalidOperationException($"Invalid scaling for axis {axis.Axis}.");
-            return (_motion.ReadAxis(axis.Number), scale);
-        }
+            });
 
         private bool CanHome() => MotionOnline && !IsOperating && !_stopping &&
             Axes.All(axis => axis.ServoOn == true && axis.Moving == false && axis.Alarm == false && axis.Emergency == false);
@@ -230,17 +202,11 @@ namespace ControlUI.Operation.Local.ViewModels
             if (Axes.Count == 0)
                 return "Configure at least one motion axis.";
 
-            foreach (var axis in Axes)
-            {
-                string? reason = axis.IsConnected != true ? "not connected" :
-                    axis.Emergency != false ? "emergency input active or unknown" :
-                    axis.Alarm != false ? "alarm active or unknown" :
-                    axis.ServoOn != true ? "servo OFF" :
-                    axis.Moving != false ? "still moving" :
-                    axis.IsHomed != true ? "home required" : null;
-                if (reason is not null)
-                    return $"Axis {axis.Axis}: {reason}.";
-            }
+            if (_snapshot == null || !_machine.IsCurrent(_snapshot))
+                return "Motion status is not available.";
+            foreach (var axis in _snapshot.Axes)
+                if (axis.NotReadyReason is { } reason)
+                    return $"Axis {axis.Axis.Name}: {reason}";
 
             return null;
         }
@@ -398,7 +364,7 @@ namespace ControlUI.Operation.Local.ViewModels
             }
 
             void Report(SequenceProgress progress) =>
-                _ = _monitor.Dispatcher.InvokeAsync(() =>
+                _ = _dispatcher.InvokeAsync(() =>
                 {
                     CompletedSteps = progress.CompletedSteps;
                     CompletedCycles = progress.Cycles;

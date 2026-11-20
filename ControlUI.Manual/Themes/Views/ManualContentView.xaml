@@ -69,15 +69,15 @@
                     <StackPanel Margin="3"><TextBlock Text="Speed (mm/s)"/><Border Style="{StaticResource AxisDisplay}"><TextBlock Style="{StaticResource AxisDigits}" Text="{Binding ActualVelocityMmPerSecond, StringFormat={}{0:0.0000}, TargetNullValue=—}"/></Border></StackPanel>
                 </UniformGrid>
                 <UniformGrid Columns="3" Margin="0,2">
-                    <Border Style="{StaticResource AxisState}" DataContext="{Binding Signals[0]}"><TextBlock Text="Servo"/></Border>
-                    <Border Style="{StaticResource AxisFault}" DataContext="{Binding Signals[1]}"><TextBlock Text="Alarm"/></Border>
-                    <Border Style="{StaticResource AxisState}" DataContext="{Binding Signals[2]}"><TextBlock Text="Moving"/></Border>
-                    <Border Style="{StaticResource AxisState}" DataContext="{Binding Signals[5]}"><TextBlock Text="Home End" ToolTip="Homing has completed"/></Border>
-                    <Border Style="{StaticResource AxisFault}" DataContext="{Binding Signals[6]}"><TextBlock Text="+Limit"/></Border>
-                    <Border Style="{StaticResource AxisFault}" DataContext="{Binding Signals[7]}"><TextBlock Text="−Limit"/></Border>
-                <Border Style="{StaticResource AxisState}" DataContext="{Binding Signals[3]}"><TextBlock Text="In Position"/></Border>
-                    <Border Style="{StaticResource AxisState}" DataContext="{Binding Signals[4]}"><TextBlock Text="Home Sig" ToolTip="Home sensor input is active"/></Border>
-                    <Border Style="{StaticResource AxisFault}" DataContext="{Binding Signals[8]}"><TextBlock Text="Emergency Input"/></Border>
+                    <Border Style="{StaticResource AxisState}" DataContext="{Binding ServoOn}"><TextBlock Text="Servo"/></Border>
+                    <Border Style="{StaticResource AxisFault}" DataContext="{Binding Alarm}"><TextBlock Text="Alarm"/></Border>
+                    <Border Style="{StaticResource AxisState}" DataContext="{Binding Moving}"><TextBlock Text="Moving"/></Border>
+                    <Border Style="{StaticResource AxisState}" DataContext="{Binding Homed}"><TextBlock Text="Home End" ToolTip="Homing has completed"/></Border>
+                    <Border Style="{StaticResource AxisFault}" DataContext="{Binding PositiveLimit}"><TextBlock Text="+Limit"/></Border>
+                    <Border Style="{StaticResource AxisFault}" DataContext="{Binding NegativeLimit}"><TextBlock Text="−Limit"/></Border>
+                <Border Style="{StaticResource AxisState}" DataContext="{Binding InPosition}"><TextBlock Text="In Position"/></Border>
+                    <Border Style="{StaticResource AxisState}" DataContext="{Binding HomeSignal}"><TextBlock Text="Home Sig" ToolTip="Home sensor input is active"/></Border>
+                    <Border Style="{StaticResource AxisFault}" DataContext="{Binding Emergency}"><TextBlock Text="Emergency Input"/></Border>
                 </UniformGrid>
                 <TextBlock Text="{Binding AlarmCode}" Foreground="{DynamicResource ErrorForegroundBrush}"
                            Margin="3,0" FontWeight="SemiBold">

@@ -16,7 +16,15 @@ public partial class MotionAxisProfile(
     public int AxisNumber { get; } = axisNumber;
     public string Label => $"{Axis} ({AxisNumber})";
     public double MicrometersPerPulse { get; } = micrometersPerPulse;
-    public AxisSignalValue[] Signals { get; internal set; } = [];
+    public AxisSignalValue ServoOn { get; } = new();
+    public AxisSignalValue Alarm { get; } = new();
+    public AxisSignalValue Moving { get; } = new();
+    public AxisSignalValue InPosition { get; } = new();
+    public AxisSignalValue HomeSignal { get; } = new();
+    public AxisSignalValue Homed { get; } = new();
+    public AxisSignalValue PositiveLimit { get; } = new();
+    public AxisSignalValue NegativeLimit { get; } = new();
+    public AxisSignalValue Emergency { get; } = new();
     public double MillimetersPerNativeUnit { get; internal set; }
     public bool JogHeld { get; set; }
     public System.Threading.CancellationTokenSource? Repeat { get; set; }

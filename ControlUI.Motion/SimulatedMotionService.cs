@@ -39,6 +39,8 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
     private volatile bool _operationStopped;
 
     public bool IsSimulation => true;
+    private long _parameterRevision;
+    public long ParameterRevision => Interlocked.Read(ref _parameterRevision);
     public bool IsReady => _ready;
     public bool IsOperationActive => _operationActive;
     public bool IsOperationStopRequested => _operationStopped;
@@ -52,12 +54,17 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
             if (_ready)
                 return;
             _axes.Values.First().Alarm = startWithAlarm;
+            Interlocked.Increment(ref _parameterRevision);
             _ready = true;
         }
     }
 
     // Manual initialization applies the default .mot path. Simulation data stays in memory.
-    public void LoadParameters(string path) => RequireReady();
+    public void LoadParameters(string path)
+    {
+        RequireReady();
+        Interlocked.Increment(ref _parameterRevision);
+    }
 
     public void SaveParameters(string path) =>
         throw new NotSupportedException("Simulation does not write equipment parameter files.");
@@ -70,9 +77,12 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
 
     public MotionAxisSettings GetAxisSettings(int axisNumber)
     {
-        RequireReady();
-        var axis = _axes[axisNumber];
-        return new(axis.MillimetersPerPulse, 1, axis.MaxSpeed, 1);
+        lock (_gate)
+        {
+            RequireReady();
+            var axis = _axes[axisNumber];
+            return new(axis.MillimetersPerPulse, 1, axis.MaxSpeed, 1);
+        }
     }
 
     public MotionBoardReadback ReadMotionBoard(int axisNumber)

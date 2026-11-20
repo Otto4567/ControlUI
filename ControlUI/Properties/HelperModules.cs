@@ -14,6 +14,7 @@ namespace ControlUI.Properties
         {
             containerRegistry.RegisterSingleton<NavigationService>();
             containerRegistry.RegisterSingleton<SequenceEngine>();
+            containerRegistry.RegisterSingleton<MachineStateService>();
             var app = (App)System.Windows.Application.Current;
             containerRegistry.RegisterInstance(app.EventLog);
             containerRegistry.RegisterInstance(app.MotionConfiguration);
