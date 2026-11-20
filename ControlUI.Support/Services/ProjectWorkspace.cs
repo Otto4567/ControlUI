@@ -1,5 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Windows.Threading;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -10,6 +13,12 @@ namespace ControlUI.Support.Services;
 
 public sealed class ProjectWorkspace
 {
+    private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly List<Action> _detach = [];
+    private readonly object _writeLock = new();
+    private readonly string _path;
+    private long _revision;
+    private long _writtenRevision;
     private bool _editorOpened;
     private SequenceRecipe? _selectedProject;
     private SequencePage? _selectedPage;
@@ -31,14 +40,18 @@ public sealed class ProjectWorkspace
     public Snapshot? Previous { get; }
     public string? RestoreError { get; }
 
-    public ProjectWorkspace()
+    public ProjectWorkspace() : this(FilePath) { }
+
+    internal ProjectWorkspace(string path)
     {
+        _path = path;
+        _saveTimer.Tick += (_, _) => Flush(background: true);
         try
         {
-            if (!File.Exists(FilePath))
+            if (!File.Exists(_path))
                 return;
 
-            var snapshot = JsonSerializer.Deserialize<Snapshot>(File.ReadAllText(FilePath), JsonOptions);
+            var snapshot = JsonSerializer.Deserialize<Snapshot>(File.ReadAllText(_path), JsonOptions);
             if (snapshot?.Projects is not { } projects)
                 throw new JsonException("Invalid workspace.");
             foreach (var project in projects)
@@ -52,6 +65,7 @@ public sealed class ProjectWorkspace
         {
             RestoreError = ex.Message;
         }
+        finally { ObserveProjects(); }
     }
 
     public static void ValidateRecipe(SequenceRecipe? recipe)
@@ -77,29 +91,115 @@ public sealed class ProjectWorkspace
         _selectedProject = project;
         _selectedPage = page;
         _selectedStep = step;
+        if (Projects.Count > 0) ScheduleSave();
     }
 
-    public void Save()
+    private void ObserveProjects()
     {
-        if (!_editorOpened)
+        foreach (var unsubscribe in _detach)
+            unsubscribe();
+        _detach.Clear();
+
+        ObserveCollection(Projects);
+        foreach (var project in Projects)
+        {
+            ObserveItem(project);
+            ObserveCollection(project.Pages);
+            foreach (var page in project.Pages)
+            {
+                ObserveItem(page);
+                ObserveCollection(page.Steps);
+                foreach (var step in page.Steps)
+                {
+                    ObserveItem(step);
+                    foreach (var target in step.AxisTargets.Values)
+                        ObserveItem(target);
+                }
+            }
+        }
+    }
+
+    private void ObserveCollection(INotifyCollectionChanged collection)
+    {
+        collection.CollectionChanged += OnCollectionChanged;
+        _detach.Add(() => collection.CollectionChanged -= OnCollectionChanged);
+    }
+
+    private void ObserveItem(INotifyPropertyChanged item)
+    {
+        item.PropertyChanged += OnEdited;
+        _detach.Add(() => item.PropertyChanged -= OnEdited);
+    }
+
+    private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
+    {
+        ObserveProjects();
+        ScheduleSave();
+    }
+
+    private void OnEdited(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(SequenceStep.AxisTargets))
+            ObserveProjects();
+        ScheduleSave();
+    }
+
+    private void ScheduleSave()
+    {
+        ++_revision;
+        _saveTimer.Stop();
+        _saveTimer.Start();
+    }
+
+    public void Save() => Flush(background: false);
+
+    private void Flush(bool background)
+    {
+        _saveTimer.Stop();
+        if (_revision == 0 && !_editorOpened)
             return;
-        try
+        int pageIndex = _selectedPage is null ? -1 : _selectedProject?.Pages.IndexOf(_selectedPage) ?? -1;
+        int stepIndex = _selectedStep is null ? -1 : _selectedPage?.Steps.IndexOf(_selectedStep) ?? -1;
+        var snapshot = new Snapshot(Projects.ToArray(), _selectedProject?.Id, pageIndex, stepIndex);
+        long revision = _revision;
+        // Snapshot bound objects on the dispatcher before writing on a worker.
+        string json;
+        try { json = JsonSerializer.Serialize(snapshot, JsonOptions); }
+        catch (Exception ex) when (ex is JsonException or ArgumentException)
         {
-            int pageIndex = _selectedPage is null ? -1 : _selectedProject?.Pages.IndexOf(_selectedPage) ?? -1;
-            int stepIndex = _selectedStep is null ? -1 : _selectedPage?.Steps.IndexOf(_selectedStep) ?? -1;
-            var snapshot = new Snapshot(Projects.ToArray(), _selectedProject?.Id, pageIndex, stepIndex);
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            WriteJsonFile(FilePath, snapshot, overwrite: true);
+            System.Diagnostics.Trace.TraceWarning("Could not serialize workspace: {0}", ex.Message);
+            return;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        if (background)
+            _ = Task.Run(Write);
+        else
+            Write();
+
+        void Write()
         {
-            System.Diagnostics.Trace.TraceWarning("Could not save workspace: {0}", ex.Message);
+            lock (_writeLock)
+            {
+                if (_writtenRevision >= revision)
+                    return;
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+                    WriteJsonText(_path, json, overwrite: true);
+                    _writtenRevision = revision;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+                {
+                    System.Diagnostics.Trace.TraceWarning("Could not save workspace: {0}", ex.Message);
+                }
+            }
         }
     }
 
-    public static void WriteJsonFile<T>(string path, T value, bool overwrite)
+    public static void WriteJsonFile<T>(string path, T value, bool overwrite) =>
+        WriteJsonText(path, JsonSerializer.Serialize(value, JsonOptions), overwrite);
+
+    private static void WriteJsonText(string path, string json, bool overwrite)
     {
-        string json = JsonSerializer.Serialize(value, JsonOptions);
         string temporaryPath = $"{path}.{Guid.NewGuid():N}.tmp";
         try
         {

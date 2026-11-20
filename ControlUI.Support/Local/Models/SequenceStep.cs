@@ -24,6 +24,17 @@ public partial class SequenceStep : ObservableObject
     public bool IsMultiAxisMove => Action == StepAction.MultiAxisMove;
 
     public Dictionary<string, SequenceAxisTarget> AxisTargets { get; init; } = new();
+    public SequenceAxisTarget GetOrAddTarget(string name)
+    {
+        var match = AxisTargets.FirstOrDefault(pair => StringComparer.OrdinalIgnoreCase.Equals(pair.Key, name)).Value;
+        if (match is not null)
+            return match;
+        var target = new SequenceAxisTarget();
+        AxisTargets.Add(name, target);
+        OnPropertyChanged(nameof(AxisTargets));
+        return target;
+    }
+
     [ObservableProperty] private string _axis = "Y";
     [ObservableProperty] private double _positionMm;
     [ObservableProperty] private double _velocityMmPerSecond = 10;

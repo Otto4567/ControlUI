@@ -62,14 +62,7 @@ public partial class SequenceContentViewModel : ObservableBase
             return;
         }
 
-        SelectedAxisTargets = AxisOptions.Select(name =>
-        {
-            var matching = value.AxisTargets.FirstOrDefault(entry =>
-                StringComparer.OrdinalIgnoreCase.Equals(entry.Key, name)).Value;
-            if (matching is null)
-                value.AxisTargets[name] = matching = new SequenceAxisTarget();
-            return new SequenceAxisRow(name, matching);
-        }).ToArray();
+        SelectedAxisTargets = AxisOptions.Select(name => new SequenceAxisRow(name, value.GetOrAddTarget(name))).ToArray();
     }
 
     private void RestoreSelection(ProjectWorkspace workspace)
