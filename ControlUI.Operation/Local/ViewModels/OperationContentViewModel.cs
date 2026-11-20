@@ -6,7 +6,6 @@ using ControlUI.Support.Local.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.ComponentModel;
-using Stopwatch = System.Diagnostics.Stopwatch;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,12 +25,12 @@ namespace ControlUI.Operation.Local.ViewModels
         private bool _stopping;
         private bool _pauseSettled;
         private string? _lastOutcome;
-        private Stopwatch? _runClock;
-        private Stopwatch? _stepClock;
+        private readonly SequenceEngine _engine;
         private Task? _stopRequest;
 
-        public OperationContentViewModel(EventLogService eventLog, ProjectWorkspace workspace, IMotionService motion)
+        public OperationContentViewModel(EventLogService eventLog, ProjectWorkspace workspace, IMotionService motion, SequenceEngine engine)
         {
+            _engine = engine;
             _eventLog = eventLog;
             _motion = motion;
             Events = eventLog.Entries;
@@ -39,14 +38,7 @@ namespace ControlUI.Operation.Local.ViewModels
             RebuildAxes();
             WeakEventManager<IMotionService, EventArgs>.AddHandler(
                 _motion, nameof(IMotionService.ConfigurationChanged), OnConfigurationChanged);
-            _monitor.Tick += async (_, _) =>
-            {
-                if (_runClock is { IsRunning: true } clock)
-                    ElapsedTime = FormatDuration(clock.Elapsed, tenths: false);
-                if (_stepClock is { } stepClock)
-                    StepElapsedTime = FormatDuration(stepClock.Elapsed, tenths: true);
-                await RefreshAxesAsync();
-            };
+            _monitor.Tick += async (_, _) => await RefreshAxesAsync();
         }
 
         public void SetMonitoring(bool active)
@@ -308,7 +300,7 @@ namespace ControlUI.Operation.Local.ViewModels
         {
             if (IsPaused)
             {
-                if (!_pauseSettled || _stopping)
+                if (!_pauseSettled || _stopping || !_engine.Resume())
                     return;
                 IsPaused = _pauseSettled = false;
                 OperationStatus = "Sequence resumed.";
@@ -332,7 +324,7 @@ namespace ControlUI.Operation.Local.ViewModels
             int repeats = Math.Max(1, project.RepeatCount);
             double speedFactor = SpeedFactor;
 
-            var steps = new List<(string Page, StepAction Action, int WaitMilliseconds, MotionMove[] Moves)>();
+            var steps = new List<SequenceInstruction>();
             foreach (var page in project.Pages)
             {
                 for (int index = 0; index < page.Steps.Count; index++)
@@ -361,7 +353,7 @@ namespace ControlUI.Operation.Local.ViewModels
                                     throw new InvalidOperationException($"Axis {axis}: enter a valid target and positive acceleration and deceleration.");
                             }
                         }
-                        steps.Add((page.Name, step.Action, step.WaitMilliseconds, moves));
+                        steps.Add(new(page.Name, step.Action, step.WaitMilliseconds, moves));
                     }
                     catch (InvalidOperationException ex)
                     {
@@ -372,113 +364,59 @@ namespace ControlUI.Operation.Local.ViewModels
             }
 
             RunFeedback = null;
-            await OperateAsync(project.Name, async token =>
+            ClearStepProgress();
+            StepCount = steps.Count;
+            CompletedCycles = 0;
+            _lastOutcome = null;
+            IsOperating = IsSequenceRunning = true;
+            RefreshCommands();
+            var plan = new SequencePlan(project.Name, mode, repeats, speedFactor, _motion.Configuration.Axes.ToArray(), steps.ToArray());
+            _engine.Progress += Report;
+            try
             {
-                ClearStepProgress();
-                int[] axisNumbers = Axes.Select(axis => axis.Number).ToArray();
-                if (await AccessMotionAsync(() => axisNumbers.Any(axis =>
+                var result = await _engine.RunAsync(plan);
+                _lastOutcome = result.Outcome.ToString();
+                OperationStatus = result.Message;
+                _ = _eventLog.WriteAsync(result.Outcome switch
                 {
-                    var state = _motion.ReadAxis(axis);
-                    return !state.Homed || !state.ServoOn || state.Moving || state.Alarm || state.Emergency;
-                }), token))
-                    throw new InvalidOperationException("All axes must be homed, stopped and ready.");
+                    SequenceOutcome.Fault => "Error",
+                    SequenceOutcome.Stopped => "Warning",
+                    _ => "Info"
+                }, "Operation", result.Message);
+            }
+            catch (Exception ex)
+            {
+                _lastOutcome = "Fault";
+                OperationStatus = ex.Message;
+                _ = _eventLog.WriteAsync("Error", "Operation", ex.Message);
+            }
+            finally
+            {
+                _engine.Progress -= Report;
+                IsOperating = IsSequenceRunning = IsPaused = _pauseSettled = false;
+                RefreshCommands();
+            }
 
-                StepCount = steps.Count;
-                CompletedCycles = 0;
-                _runClock = Stopwatch.StartNew();
-                ElapsedTime = FormatDuration(TimeSpan.Zero, tenths: false);
-                for (int cycle = 0; mode == ProjectRunMode.Continuous ||
-                    cycle < (mode == ProjectRunMode.Repeat ? repeats : 1); cycle++)
+            void Report(SequenceProgress progress) =>
+                _ = _monitor.Dispatcher.InvokeAsync(() =>
                 {
-                    CompletedSteps = 0;
-                    var cycleClock = Stopwatch.StartNew();
-                    for (int i = 0; i < steps.Count; i++)
-                    {
-                        await WaitWhilePausedAsync(token);
-                        CheckExternalStop();
-                        token.ThrowIfCancellationRequested();
-                        var step = steps[i];
-                        string action = step.Action == StepAction.Wait
-                            ? $"Wait {step.WaitMilliseconds / speedFactor / 1000:0.###} s"
-                            : $"Move {string.Join(", ", step.Moves.Select(move =>
-                                $"{Axes.Single(axis => axis.Number == move.Axis).Axis} to {move.Position:0.####} mm"))}";
-                        CurrentStep = $"Cycle {cycle + 1} · Step {i + 1} · {action}";
+                    CompletedSteps = progress.CompletedSteps;
+                    CompletedCycles = progress.Cycles;
+                    CurrentStep = progress.Step;
+                    ElapsedTime = SequenceEngine.FormatDuration(progress.Elapsed, false);
+                    if (progress.StepElapsed is { } elapsed)
+                        StepElapsedTime = SequenceEngine.FormatDuration(elapsed, true);
+                    if (progress.LastCycle is { } cycle)
+                        LastCycleTime = SequenceEngine.FormatDuration(cycle, true);
+                    _pauseSettled = IsPaused && progress.PauseSettled;
+                    if (_pauseSettled)
+                        OperationStatus = "Paused. Press Run to resume.";
+                    else if (!_stopping && !IsPaused && CurrentStep != null)
                         OperationStatus = CurrentStep;
-                        _stepClock = Stopwatch.StartNew();
-                        StepElapsedTime = FormatDuration(TimeSpan.Zero, tenths: true);
-                        _ = _eventLog.WriteAsync("Info", "Sequence", $"{project.Name} / {step.Page} · {CurrentStep} · Started.");
-
-                        if (step.Action == StepAction.Wait)
-                        {
-                            double duration = step.WaitMilliseconds / speedFactor;
-                            var wait = System.Diagnostics.Stopwatch.StartNew();
-                            while (wait.Elapsed.TotalMilliseconds < duration)
-                            {
-                                CheckExternalStop();
-                                if (IsPaused)
-                                {
-                                    wait.Stop();
-                                    await WaitWhilePausedAsync(token);
-                                    wait.Start();
-                                }
-                                await Task.Delay(TimeSpan.FromMilliseconds(
-                                    Math.Clamp(duration - wait.Elapsed.TotalMilliseconds, 1, 25)), token);
-                            }
-                        }
-                        else
-                        {
-                            var moves = step.Moves.Select(move => move with { Speed = move.Speed * speedFactor }).ToArray();
-                            var axisTargets = moves.Select(move =>
-                                (Axes.Single(axis => axis.Number == move.Axis), move.Position)).ToArray();
-                            int[] moveAxes = moves.Select(move => move.Axis).ToArray();
-                            while (true)
-                            {
-                                await WaitWhilePausedAsync(token);
-                                var targets = await AccessMotionAsync(() =>
-                                {
-                                    var monitored = axisTargets.Select(item =>
-                                    {
-                                        var (axis, target) = item;
-                                        var (state, scale) = ReadAxis(axis);
-                                        return (Axis: axis, Target: target, Direction: target - state.CommandPosition * scale);
-                                    }).ToArray();
-                                    _motion.MoveOperationAxes(moves);
-                                    return monitored;
-                                }, token);
-                                if (await WaitForAxesAsync(targets, token))
-                                    break;
-
-                                await AccessMotionAsync(() => _motion.PauseOperationAxes(moveAxes), token);
-                                await WaitForAxesAsync(targets, token, settlingPause: true);
-                            }
-                        }
-                        FinishStep("Completed", "Info");
-                        CompletedSteps = i + 1;
-                    }
-                    LastCycleTime = FormatDuration(cycleClock.Elapsed, tenths: true);
-                    CompletedCycles++;
-                    // Continuous projects with only zero-duration waits still yield to Stop.
-                    await Task.Delay(1, token);
-                }
-            }, sequence: true);
-        }
-
-        private void FinishStep(string result, string level)
-        {
-            if (_stepClock is not { } clock)
-                return;
-
-            _stepClock = null;
-            OnPropertyChanged(nameof(MainStatus));
-            StepElapsedTime = FormatDuration(clock.Elapsed, tenths: true);
-            _ = _eventLog.WriteAsync(level, "Sequence",
-                $"{SelectedProject?.Name} · {CurrentStep} · {result} ({StepElapsedTime}).");
-        }
-
-        private static string FormatDuration(TimeSpan duration, bool tenths)
-        {
-            string value = $"{(long)duration.TotalHours:00}:{duration.Minutes:00}:{duration.Seconds:00}";
-            return tenths ? $"{value}.{duration.Milliseconds / 100}" : value;
+                    if (progress.LogLevel != null && progress.LogMessage != null)
+                        _ = _eventLog.WriteAsync(progress.LogLevel, "Sequence", progress.LogMessage);
+                    RefreshCommands();
+                });
         }
 
         private MotionMove[] BuildMoves(SequenceStep step)
@@ -500,62 +438,11 @@ namespace ControlUI.Operation.Local.ViewModels
                     entry.Value.AccelMmPerSecondSquared, entry.Value.DecelMmPerSecondSquared)).ToArray();
         }
 
-        private async Task WaitWhilePausedAsync(CancellationToken token)
-        {
-            if (!IsPaused)
-                return;
-
-            _stepClock?.Stop();
-            _pauseSettled = true;
-            OperationStatus = "Paused. Press Run to resume.";
-            RefreshCommands();
-            while (IsPaused)
-            {
-                CheckExternalStop();
-                await Task.Delay(25, token);
-            }
-            token.ThrowIfCancellationRequested();
-            _stepClock?.Start();
-        }
-
-        private async Task<bool> WaitForAxesAsync((AxisStatusInfo Axis, double Target, double Direction)[] axes,
-            CancellationToken token, bool settlingPause = false)
-        {
-            var elapsed = System.Diagnostics.Stopwatch.StartNew();
-            while (elapsed.Elapsed < TimeSpan.FromMinutes(5))
-            {
-                CheckExternalStop();
-                token.ThrowIfCancellationRequested();
-                if (!settlingPause && IsPaused)
-                    return false;
-                await Task.Delay(25, token);
-                bool complete = true;
-                foreach (var (axis, target, direction) in axes)
-                {
-                    var (state, scale) = await AccessMotionAsync(() => ReadAxis(axis), token);
-                    if (!state.ServoOn || state.Alarm || state.Emergency ||
-                        state.IsLimitBlocking(direction))
-                        throw new InvalidOperationException($"Axis {axis.Axis} fault during motion.");
-
-                    complete &= !state.Moving && (settlingPause ||
-                        (state.InPosition && Math.Abs(state.ActualPosition * scale - target) <= axis.MillimetersPerPulse));
-                }
-                if (complete)
-                    return true;
-            }
-            throw new TimeoutException("Motion did not complete within five minutes.");
-        }
-
-        private void CheckExternalStop()
-        {
-            if (_motion.IsOperationStopRequested)
-                throw new InvalidOperationException("An axis stop was requested.");
-        }
-
         [RelayCommand(CanExecute = nameof(CanPause))]
         private void Pause()
         {
             _pauseSettled = false;
+            _engine.Pause();
             IsPaused = true;
             OperationStatus = "Pausing current step...";
             _ = _eventLog.WriteAsync("Info", "Operation", OperationStatus);
@@ -570,7 +457,7 @@ namespace ControlUI.Operation.Local.ViewModels
             RefreshCommands();
             var cancellation = _operation;
             cancellation?.Cancel();
-            var stop = StopAxesAsync();
+            var stop = IsSequenceRunning ? _engine.StopAsync() : StopAxesAsync();
             _stopRequest = stop;
             try
             {
@@ -594,7 +481,7 @@ namespace ControlUI.Operation.Local.ViewModels
             return Task.Run(() => _motion.StopAxes(numbers, false));
         }
 
-        private async Task OperateAsync(string name, Func<CancellationToken, Task> action, bool sequence = false)
+        private async Task OperateAsync(string name, Func<CancellationToken, Task> action)
         {
             if (IsOperating || _stopping)
                 return;
@@ -602,7 +489,6 @@ namespace ControlUI.Operation.Local.ViewModels
             _operation = cancellation;
             _lastOutcome = null;
             IsOperating = true;
-            IsSequenceRunning = sequence;
             RefreshCommands();
             bool ownsMotion = false;
             try
@@ -611,14 +497,11 @@ namespace ControlUI.Operation.Local.ViewModels
                 ownsMotion = true;
                 await action(cancellation.Token);
                 cancellation.Token.ThrowIfCancellationRequested();
-                if (sequence)
-                    _lastOutcome = "Completed";
                 OperationStatus = $"{name} complete.";
                 _ = _eventLog.WriteAsync("Info", "Operation", OperationStatus);
             }
             catch (OperationCanceledException) when (cancellation.IsCancellationRequested || _motion.IsOperationStopRequested)
             {
-                FinishStep("Stopped", "Warning");
                 if (!cancellation.IsCancellationRequested)
                 {
                     _lastOutcome = "Stopped";
@@ -629,7 +512,6 @@ namespace ControlUI.Operation.Local.ViewModels
             catch (Exception ex)
             {
                 _lastOutcome = "Fault";
-                FinishStep($"Failed: {ex.Message}", "Error");
                 OperationStatus = ex.Message;
                 if (ownsMotion)
                 {
@@ -640,11 +522,6 @@ namespace ControlUI.Operation.Local.ViewModels
             }
             finally
             {
-                if (sequence && _runClock is { IsRunning: true } clock)
-                {
-                    clock.Stop();
-                    ElapsedTime = FormatDuration(clock.Elapsed, tenths: false);
-                }
                 if (_stopRequest is { } stop)
                 {
                     try { await stop; }

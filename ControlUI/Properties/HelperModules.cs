@@ -13,6 +13,7 @@ namespace ControlUI.Properties
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
             containerRegistry.RegisterSingleton<NavigationService>();
+            containerRegistry.RegisterSingleton<SequenceEngine>();
             var app = (App)System.Windows.Application.Current;
             containerRegistry.RegisterInstance(app.EventLog);
             containerRegistry.RegisterInstance(app.MotionConfiguration);

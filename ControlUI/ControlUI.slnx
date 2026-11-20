@@ -41,4 +41,10 @@
       <Platform Solution="*|x64" Project="x64" />
     </Project>
   </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="../ControlUI.Tests/ControlUI.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|Any CPU" Project="x64" />
+    </Project>
+  </Folder>
 </Solution>

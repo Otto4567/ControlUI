@@ -162,6 +162,19 @@ public sealed class SimulatedMotionService(TimeProvider clock, bool startWithAla
         }
     }
 
+    public void SimulateAlarm(int axisNumber)
+    {
+        lock (_gate)
+        {
+            RequireReady();
+            var axis = _axes[axisNumber];
+            Update(axis);
+            axis.Alarm = true;
+            if (axis.Moving)
+                Stop(axis, true, clock.GetTimestamp());
+        }
+    }
+
     public void ResetAxisAlarm(int axisNumber)
     {
         lock (_gate)
